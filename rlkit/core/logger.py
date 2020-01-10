@@ -162,13 +162,14 @@ def pop_tabular_prefix():
     _tabular_prefix_str = ''.join(_tabular_prefixes)
 
 
-def save_extra_data(data, path='extra_data', ext='.pkl'):
+def save_extra_data(data, epoch):
     """
-    Data saved here will always override the last entry
 
     :param data: Something pickle'able.
     """
-    file_name = osp.join(_snapshot_dir, path + ext)
+    target_dir = _snapshot_dir+'/extra_data/'
+    os.makedirs(target_dir, exist_ok = True)
+    file_name = target_dir+'epoch_'+str(epoch) + '.pkl'
     with open(file_name, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 

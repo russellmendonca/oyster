@@ -103,12 +103,7 @@ def experiment(variant):
     exp_id = 'debug' if DEBUG else None
     experiment_log_dir = setup_logger(variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
 
-    # optionally save eval trajectories as pkl files
-    if variant['algo_params']['dump_eval_paths']:
-        pickle_dir = experiment_log_dir + '/eval_trajectories'
-        pathlib.Path(pickle_dir).mkdir(parents=True, exist_ok=True)
-
-    # run the algorithm
+    #run the algorithm
     algorithm.train()
 
 def deep_update_dict(fr, to):
@@ -134,9 +129,31 @@ def main(config, gpu, docker, debug):
             exp_params = json.load(f)
         variant = deep_update_dict(exp_params, variant)
     variant['util_params']['gpu_id'] = gpu
-
+    
     experiment(variant)
-
 if __name__ == "__main__":
     main()
 
+
+
+
+#@click.command()
+#@click.argument('config', default=None)
+
+
+#def main_fixed_seed(config, seed):
+#
+#    variant = default_config
+#    if config:
+#        with open(os.path.join(config)) as f:
+#            exp_params = json.load(f)
+#        variant = deep_update_dict(exp_params, variant)
+#    variant['util_params']['gpu_id'] = gpu
+#    #variant['exp_name'] = variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
+#    setup_logger(variant['log_name']+'/seed_'+str(seed), variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
+#    experiment(variant)
+#def main_fixed_seed(config, seed):
+#    print(seed)
+
+#os.system('parallel --lb \" python -u launch_pearl_experiment.py main_fixed_seed {1} {2} \" ::: config ::: 0 1 2')
+#parallel python launch_pearl_experiment.py main --seed=

@@ -40,7 +40,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             update_post_train=1,
             eval_deterministic=True,
             render=False,
-            save_replay_buffer=False,
+            save_extra_data_interval = 5,
+            save_replay_buffer=True,
             save_algorithm=False,
             save_environment=False,
             render_eval_paths=False,
@@ -81,6 +82,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self.num_exp_traj_eval = num_exp_traj_eval
         self.eval_deterministic = eval_deterministic
         self.render = render
+        self.save_extra_data_interval = save_extra_data_interval
         self.save_replay_buffer = save_replay_buffer
         self.save_algorithm = save_algorithm
         self.save_environment = save_environment
@@ -159,6 +161,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
                 print('collecting initial pool of data for train and eval')
                 # temp for evaluating
                 for idx in self.train_tasks:
+                    print('Task '+str(idx))
                     self.task_idx = idx
                     self.env.reset_task(idx)
                     self.collect_data(self.num_initial_steps, 1, np.inf)
@@ -231,7 +234,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         gt.stamp('sample')
 
     def _try_to_eval(self, epoch):
-        logger.save_extra_data(self.get_extra_data_to_save(epoch))
+        if epoch%self.save_extra_data_interval==0:
+            logger.save_extra_data(self.get_extra_data_to_save(epoch), epoch)
         if self._can_evaluate():
             self.evaluate(epoch)
 
@@ -340,7 +344,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         if self.save_environment:
             data_to_save['env'] = self.training_env
         if self.save_replay_buffer:
-            data_to_save['replay_buffer'] = self.replay_buffer
+            data_to_save['replay_buffer'] = self.replay_buffer.return_all_data()
         if self.save_algorithm:
             data_to_save['algorithm'] = self
         return data_to_save
@@ -458,8 +462,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
         self.eval_statistics['AverageReturn_all_train_tasks'] = avg_train_return
         self.eval_statistics['AverageReturn_all_test_tasks'] = avg_test_return
-        logger.save_extra_data(avg_train_online_return, path='online-train-epoch{}'.format(epoch))
-        logger.save_extra_data(avg_test_online_return, path='online-test-epoch{}'.format(epoch))
+#        logger.save_extra_data(avg_train_online_return, path='online-train-epoch{}'.format(epoch))
+#        logger.save_extra_data(avg_test_online_return, path='online-test-epoch{}'.format(epoch))
 
         for key, value in self.eval_statistics.items():
             logger.record_tabular(key, value)

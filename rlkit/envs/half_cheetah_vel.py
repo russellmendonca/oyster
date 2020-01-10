@@ -48,7 +48,7 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
 
     def sample_tasks(self, num_tasks):
         np.random.seed(1337)
-        velocities = np.random.uniform(0.0, 3.0, size=(num_tasks,))
+        velocities = np.random.uniform(0.0, 1.0, size=(num_tasks,))
         tasks = [{'velocity': velocity} for velocity in velocities]
         return tasks
 
