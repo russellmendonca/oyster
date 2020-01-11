@@ -98,11 +98,6 @@ def experiment(variant):
     DEBUG = variant['util_params']['debug']
     os.environ['DEBUG'] = str(int(DEBUG))
 
-    # create logging directory
-    # TODO support Docker
-    exp_id = 'debug' if DEBUG else None
-    experiment_log_dir = setup_logger(variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
-
     #run the algorithm
     algorithm.train()
 
@@ -118,42 +113,20 @@ def deep_update_dict(fr, to):
 
 @click.command()
 @click.argument('config', default=None)
-@click.option('--gpu', default=0)
-@click.option('--docker', is_flag=True, default=False)
-@click.option('--debug', is_flag=True, default=False)
-def main(config, gpu, docker, debug):
-
+@click.argument('seed', default = None, type = int)
+def main(config, seed):
+    assert 0<= seed <= 3
+    gpu_id = seed
     variant = default_config
     if config:
         with open(os.path.join(config)) as f:
             exp_params = json.load(f)
         variant = deep_update_dict(exp_params, variant)
-    variant['util_params']['gpu_id'] = gpu
-    
+    variant['util_params']['gpu_id'] = gpu_id
+    exp_log_name = variant['env_name']+'/'+variant['log_annotation']+'/seed_'+str(seed)
+    setup_logger(exp_log_name, variant=variant, exp_id=None, base_log_dir=variant['util_params']['base_log_dir'])
     experiment(variant)
+
 if __name__ == "__main__":
     main()
 
-
-
-
-#@click.command()
-#@click.argument('config', default=None)
-
-
-#def main_fixed_seed(config, seed):
-#
-#    variant = default_config
-#    if config:
-#        with open(os.path.join(config)) as f:
-#            exp_params = json.load(f)
-#        variant = deep_update_dict(exp_params, variant)
-#    variant['util_params']['gpu_id'] = gpu
-#    #variant['exp_name'] = variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
-#    setup_logger(variant['log_name']+'/seed_'+str(seed), variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
-#    experiment(variant)
-#def main_fixed_seed(config, seed):
-#    print(seed)
-
-#os.system('parallel --lb \" python -u launch_pearl_experiment.py main_fixed_seed {1} {2} \" ::: config ::: 0 1 2')
-#parallel python launch_pearl_experiment.py main --seed=
