@@ -1,4 +1,4 @@
-"""
+"
 Launcher for experiments with PEARL
 
 """

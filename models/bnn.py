@@ -593,8 +593,6 @@ class BNN:
         return OrderedDict(model_metrics)
 
 
-
-
     def predict(self, inputs, factored=False, *args, **kwargs):
         """Returns the distribution predicted by the model for each input vector in inputs.
         Behavior is affected by the dimensionality of inputs and factored as follows:

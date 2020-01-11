@@ -1,6 +1,6 @@
 {
     "env_name": "cheetah-vel",
-    "log_annotation": "vel-0-1",
+    "log_annotation": "vel-0-3",
     "n_train_tasks": 100,
     "n_eval_tasks": 30,
     "env_params": {
