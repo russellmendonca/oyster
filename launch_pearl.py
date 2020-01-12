@@ -1,7 +1,3 @@
-"
-Launcher for experiments with PEARL
-
-"""
 import os
 import pathlib
 import numpy as np
@@ -17,7 +13,7 @@ from rlkit.torch.sac.sac import PEARLSoftActorCritic
 from rlkit.torch.sac.agent import PEARLAgent
 from rlkit.launchers.launcher_util import setup_logger
 import rlkit.torch.pytorch_util as ptu
-from configs.default import default_config
+from configs.default import default_pearl_config
 
 
 def experiment(variant):
@@ -117,7 +113,7 @@ def deep_update_dict(fr, to):
 def main(config, seed):
     assert 0<= seed <= 3
     gpu_id = seed
-    variant = default_config
+    variant = default_pearl_config
     if config:
         with open(os.path.join(config)) as f:
             exp_params = json.load(f)

@@ -1,6 +1,6 @@
 {
     "env_name": "cheetah-vel",
-    "log_annotation": "vel-0-3",
+    "log_annotation": "vel-0-1",
     "n_train_tasks": 100,
     "n_eval_tasks": 30,
     "env_params": {
@@ -17,5 +17,6 @@
         "num_exp_traj_eval": 2,
         "embedding_batch_size": 100,
         "embedding_mini_batch_size": 100
-    }
+    },
+    "data_load_path": "/home/russell/oyster/"
 }

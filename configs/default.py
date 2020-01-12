@@ -1,6 +1,6 @@
 # default PEARL experiment settings
 # all experiments should modify these settings only as needed
-default_config = dict(
+default_pearl_config = dict(
     env_name='cheetah-dir',
     n_train_tasks=2,
     n_eval_tasks=2,
@@ -50,6 +50,35 @@ default_config = dict(
         docker=False, # TODO docker is not yet supported
     )
 )
+
+default_mier_config = dict(
+    env_name='cheetah-dir',
+    env_params=dict(
+        n_tasks=2, # number of distinct tasks in this domain, shoudl equal sum of train and eval tasks
+        randomize_tasks=True, # shuffle the tasks after creating them
+    ),
+    log_dir = '',
+    data_load_path = '',
+    num_epochs = 500,
+    load_data_interval = 10,
+    num_training_steps_per_epoch = 2000,
+    model_hyperparams=dict(
+
+        context_dim = 5,
+        fixed_preupdate_context = True,
+        ada_state_dynamics_pred = True,
+        ada_rew_pred = True,
+
+        meta_batch_size = 10,
+        fast_adapt_steps = 2,
+        fast_adapt_lr = 0.1,
+        clip_val_inner_grad = 10,
+        clip_val_outer_grad = 10,
+        reg_weight = 1,
+    )
+)
+
+
 
 
 
