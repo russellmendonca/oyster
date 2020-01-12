@@ -38,8 +38,8 @@ class MIER:
         for epoch in range(self.num_epochs):
             self.model.save_model(osp.join(self.log_dir, 'Itr_' + str(epoch)))
             self.run_training_epoch(epoch)
-
-    # TODO : add evaluation
+            self.eval(epoch)
+   
 
     def sample_data(self, tasks):
 
@@ -65,6 +65,23 @@ class MIER:
 
         return all_inputs, all_targets
 
+    def _get_feed_dict(self, tasks):
+
+        train_input, train_target = self.sample_data(tasks)
+        val_input, val_target = self.sample_data(tasks)
+
+        return {self.model.train_input: train_input,
+                     self.model.train_target: train_target,
+                     self.model.val_input: val_input,
+                     self.model.val_target: val_target}
+
+    def eval(self, epoch):
+
+        train_info_dicts, post_adapt_val_dict = self.sess.run(
+            [self.model.train_dicts, self.model.post_adapt_val_dict],
+            feed_dict=self._get_feed_dict(self.train_tasks))
+        print('eval completed')
+
     def run_training_epoch(self, epoch):
 
         for step in range(self.num_training_steps_per_epoch):
@@ -75,18 +92,10 @@ class MIER:
             tasks = np.random.choice(np.arange(self.n_train_tasks), self.model.meta_batch_size,
                                      replace=self.model.meta_batch_size > self.n_train_tasks)
 
-            train_input, train_target = self.sample_data(tasks)
-            val_input, val_target = self.sample_data(tasks)
-
-            feed_dict = {self.model.train_input: train_input,
-                         self.model.train_target: train_target,
-                         self.model.val_input: val_input,
-                         self.model.val_target: val_target}
-
             _, updated_contexts, train_info_dicts, post_adapt_val_dict = self.sess.run(
                 [self.model.metatrain_op, self.model.updated_contexts,
                  self.model.train_dicts, self.model.post_adapt_val_dict],
-                feed_dict=feed_dict)
+                feed_dict=self._get_feed_dict(tasks))
 
 #            if (step + 1) % FLAGS.num_training_steps_per_epoch == 0:
 #                self.logger.log_dict(epoch, {'Model/preAda_ModelLoss': np.mean(pre_adapt_losses),
