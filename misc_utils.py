@@ -3,8 +3,6 @@ import io
 import pprint
 
 import numpy as np
-import absl.flags
-from absl import logging
 import tensorflow as tf
 from PIL import Image
 from gym import wrappers
@@ -16,21 +14,15 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
-def define_flags_with_default(**kwargs):
-    for key, val in kwargs.items():
-        if isinstance(val, bool):
-            # Note that True and False are instances of int.
-            absl.flags.DEFINE_bool(key, val, 'automatically defined flag')
-        elif isinstance(val, int):
-            absl.flags.DEFINE_integer(key, val, 'automatically defined flag')
-        elif isinstance(val, float):
-            absl.flags.DEFINE_float(key, val, 'automatically defined flag')
-        elif isinstance(val, str):
-            absl.flags.DEFINE_string(key, val, 'automatically defined flag')
+def deep_update_dict(fr, to):
+    ''' update dict of dicts with new values '''
+    # assume dicts have same keys
+    for k, v in fr.items():
+        if type(v) is dict:
+            deep_update_dict(v, to[k])
         else:
-            raise ValueError('Incorrect value type')
-    return kwargs
-
+            to[k] = v
+    return to
 
 def set_random_seed(seed):
     np.random.seed(seed)

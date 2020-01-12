@@ -13,7 +13,7 @@ from rlkit.torch.sac.agent import PEARLAgent
 from rlkit.launchers.launcher_util import setup_logger
 import rlkit.torch.pytorch_util as ptu
 from configs.default import default_pearl_config
-
+from misc_utils import deep_update_dict
 
 def experiment(variant):
     # create multi-task environment and sample tasks
@@ -95,18 +95,6 @@ def experiment(variant):
 
     # run the algorithm
     algorithm.train()
-
-
-def deep_update_dict(fr, to):
-    ''' update dict of dicts with new values '''
-    # assume dicts have same keys
-    for k, v in fr.items():
-        if type(v) is dict:
-            deep_update_dict(v, to[k])
-        else:
-            to[k] = v
-    return to
-
 
 @click.command()
 @click.argument('config', default=None)

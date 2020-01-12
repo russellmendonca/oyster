@@ -1,3 +1,4 @@
+import tensorflow as tf
 import pickle
 import os.path as osp
 
@@ -6,7 +7,7 @@ from rlkit.envs import ENVS
 from rlkit.envs.wrappers import NormalizedBoxEnv
 from models.constructor import construct_model
 
-from .misc_utils import TensorBoardLogger
+from misc_utils import TensorBoardLogger
 
 
 class MIER:
@@ -14,16 +15,23 @@ class MIER:
     def __init__(self, variant):
 
         for key in variant:
-            setattr(self, key, variant['key'])
+            setattr(self, key, variant[key])
         self.env = NormalizedBoxEnv(ENVS[self.env_name](**self.env_params))
-        self.model = construct_model(obs_dim=int(self.env.observation_space.shape[0]),
+        self.setup_sess()
+        self.model = construct_model(self.sess, 
+                                     obs_dim=int(self.env.observation_space.shape[0]),
                                      act_dim=int(self.env.action_space.shape[0]),
-                                     model_hyperparams=variant.model_hyperparams
+                                     model_hyperparams=self.model_hyperparams
                                      )
 
         self.logger = TensorBoardLogger(self.log_dir)
         self.loaded_data = pickle.load(open(self.data_load_path, 'rb'))['replay_buffer']
         self.loaded_data_size = [len(self.loaded_data[task]['observations']) for task in range(len(self.loaded_data))]
+        
+    def setup_sess(self):
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=config)
 
     def train(self):
 
@@ -40,9 +48,11 @@ class MIER:
 
         for i, task in enumerate(tasks):
             idxs = np.random.choice(np.arange(self.loaded_data_size[task]), self.batch_size)
-            obs, acts, next_obs, rews = [get_data(task, key, idxs) for key in
+            obs, acts, rews, next_obs = [get_data(task, key, idxs) for key in
                                          ['observations', 'actions', 'rewards', 'next_observations']]
-
+            
+            inputs = np.concatenate([obs, acts], axis = -1)
+            targets = np.concatenate([rews, next_obs - obs], axis = -1)
             if i == 0:
                 all_inputs = inputs;
                 all_targets = targets
@@ -50,8 +60,8 @@ class MIER:
                 all_inputs = np.concatenate([all_inputs, inputs], axis=0)
                 all_targets = np.concatenate([all_targets, targets], axis=0)
 
-        all_inputs = all_inputs * np.ones((FLAGS.num_networks,) + all_inputs.shape)
-        all_targets = all_targets * np.ones((FLAGS.num_networks,) + all_targets.shape)
+        all_inputs = all_inputs * np.ones((self.model.num_nets,) + all_inputs.shape)
+        all_targets = all_targets * np.ones((self.model.num_nets,) + all_targets.shape)
 
         return all_inputs, all_targets
 
@@ -62,8 +72,8 @@ class MIER:
             if step % 100 == 0:
                 print('step ', step)
 
-            tasks = np.random.choice(self.train_tasks, self.model.meta_train_n_tasks,
-                                     replace=self.model.meta_train_n_tasks > len(self.train_tasks))
+            tasks = np.random.choice(np.arange(self.n_train_tasks), self.model.meta_batch_size,
+                                     replace=self.model.meta_batch_size > self.n_train_tasks)
 
             train_input, train_target = self.sample_data(tasks)
             val_input, val_target = self.sample_data(tasks)
@@ -73,19 +83,19 @@ class MIER:
                          self.model.val_input: val_input,
                          self.model.val_target: val_target}
 
-            _, updated_contexts, pre_adapt_losses, post_adapt_losses, gvs = self.sess.run(
+            _, updated_contexts, train_info_dicts, post_adapt_val_dict = self.sess.run(
                 [self.model.metatrain_op, self.model.updated_contexts,
-                 self.model.pre_adapt_losses, self.model.post_adapt_losses, self.model.gvs],
+                 self.model.train_dicts, self.model.post_adapt_val_dict],
                 feed_dict=feed_dict)
 
-            if (step + 1) % FLAGS.num_training_steps_per_epoch == 0:
-                self.logger.log_dict(epoch, {'Model/preAda_ModelLoss': np.mean(pre_adapt_losses),
-                                             'Model/postAda_ModelLoss': np.mean(post_adapt_losses),
-                                             'Model/var_norms': np.mean([np.linalg.norm(var) for _, var in gvs]),
-                                             'Model/grad_norms': np.mean([np.linalg.norm(grad) for grad, _ in gvs]),
-                                             'Model/updated_context_norms': np.mean(
-                                                 [np.linalg.norm(context) for context in updated_contexts])
-                                             })
+#            if (step + 1) % FLAGS.num_training_steps_per_epoch == 0:
+#                self.logger.log_dict(epoch, {'Model/preAda_ModelLoss': np.mean(pre_adapt_losses),
+#                                             'Model/postAda_ModelLoss': np.mean(post_adapt_losses),
+#                                             'Model/var_norms': np.mean([np.linalg.norm(var) for _, var in gvs]),
+#                                             'Model/grad_norms': np.mean([np.linalg.norm(grad) for grad, _ in gvs]),
+#                                             'Model/updated_context_norms': np.mean(
+#                                                 [np.linalg.norm(context) for context in updated_contexts])
+#                                             })
 
     def _rollout_model(self, context, rollout_batch_size, **kwargs):
         print('[ Model Rollout ] Starting | Rollout length: {} | Batch size: {}'.format(

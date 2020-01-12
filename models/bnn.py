@@ -22,18 +22,16 @@ class BNN:
     with ensembling).
     """
 
-    def __init__(self, obs_dim, act_dim, model_hyperparams):
+    def __init__(self, sess, obs_dim, act_dim, model_hyperparams):
         """Initializes a class instance.
 
         """
+        self._sess = sess
         self.obs_dim = obs_dim
         self.act_dim = act_dim
+        self.output_dim = obs_dim + 1
         for key in model_hyperparams:
             setattr(self, key, model_hyperparams[key])
-
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        self._sess = tf.Session(config=config)
 
         # Instance variables
         self.finalized = False
@@ -43,7 +41,6 @@ class BNN:
         self.scaler = None
 
         # Training objects
-        self.optimizer = None
         self.sy_train_in, self.sy_train_targ = None, None
         self.train_op, self.mse_loss = None, None
 
@@ -51,18 +48,6 @@ class BNN:
         self.sy_pred_in2d, self.sy_pred_mean2d_fac, self.sy_pred_var2d_fac = None, None, None
         self.sy_pred_mean2d, self.sy_pred_var2d = None, None
         self.sy_pred_in3d, self.sy_pred_mean3d_fac, self.sy_pred_var3d_fac = None, None, None
-
-        if params.get('load_model', False):
-            if self.model_dir is None:
-                raise ValueError("Cannot load model without providing model directory.")
-            self._load_structure()
-            self.num_nets, self.model_loaded = self.layers[0].get_ensemble_size(), True
-            print("Model loaded from %s." % self.model_dir)
-            self.num_elites = params['num_elites']
-        else:
-            self.num_nets = params.get('num_networks', 1)
-            self.num_elites = params['num_elites']  # params.get('num_elites', 1)
-            self.model_loaded = False
 
         if self.num_nets == 1:
             print("Created a neural network with variance predictions.")
@@ -100,8 +85,8 @@ class BNN:
             raise RuntimeError("Cannot modify network structure after finalizing.")
         if len(self.layers) == 0 and layer.get_input_dim() is None:
             raise ValueError("Must set input dimension for the first layer.")
-        if self.model_loaded:
-            raise RuntimeError("Cannot add layers to a loaded model.")
+        #if self.model_loaded:
+        #    raise RuntimeError("Cannot add layers to a loaded model.")
 
         layer.set_ensemble_size(self.num_nets)
         if len(self.layers) > 0:
@@ -117,8 +102,8 @@ class BNN:
             raise RuntimeError("Network is empty.")
         if self.finalized:
             raise RuntimeError("Cannot modify network structure after finalizing.")
-        if self.model_loaded:
-            raise RuntimeError("Cannot remove layers from a loaded model.")
+        #if self.model_loaded:
+        #    raise RuntimeError("Cannot remove layers from a loaded model.")
 
         return self.layers.pop()
 
@@ -137,8 +122,8 @@ class BNN:
             raise RuntimeError("Can only finalize a network once.")
 
         self.meta_optimizer = tf.train.AdamOptimizer(1e-3)
-        self.fast_optimizer = tf.train.AdamOptimizer(1e-1)
-        self.regular_optimizer = tf.train.AdamOptimizer(1e-3)
+        #self.fast_optimizer = tf.train.AdamOptimizer(1e-1)
+        #self.regular_optimizer = tf.train.AdamOptimizer(1e-3)
 
         # Add variance output.
         self.layers[-1].set_output_dim(2 * self.layers[-1].get_output_dim())
@@ -175,7 +160,7 @@ class BNN:
                         self.optvars.extend(layer.get_vars())
 
         self.nonoptvars.extend(self.scaler.get_vars())
-        self.optvars.extend([self.max_logvar, self.min_logvar])
+        self.optvars.extend([self.max_state_logvar, self.min_state_logvar, self.max_rew_logvar, self.min_rew_logvar])
 
         if self.fixed_preupdate_context:
             self.nonoptvars.append(self.context)
@@ -184,8 +169,6 @@ class BNN:
 
         # Set up training
         with tf.variable_scope(self.name):
-            self.optimizer = optimizer(**optimizer_args)
-
             # size is number of tasks X num nets X batch size X data_dim
             self.train_input = tf.placeholder(dtype=tf.float32,
                                               shape=[self.num_nets, None,
@@ -202,12 +185,12 @@ class BNN:
             self.val_target = tf.placeholder(dtype=tf.float32,
                                              shape=[self.num_nets, None, self.layers[-1].get_output_dim() // 2],
                                              name="val_target")
-
+            
             self.updated_contexts, self.train_dicts = self.get_updated_contexts(self.train_input, self.train_target)
 
             self.pre_adapt_train_loss = self.train_dicts[0]['total_model_loss']
             self.post_adapt_train_loss = self.train_dicts[-1]['total_model_loss']
-            self.post_adapt_val_dict = self._get_model_loss_dict(val_input, updated_contexts, val_target,
+            self.post_adapt_val_dict = self._get_model_loss_dict(self.val_input, self.updated_contexts, self.val_target,
                                                                  add_rew_pred=self.ada_rew_pred,
                                                                  add_state_pred=self.ada_state_dynamics_pred)
             self.post_adapt_val_loss = self.post_adapt_val_dict['total_model_loss']
@@ -216,42 +199,43 @@ class BNN:
                 self.updated_contexts - self.context) + \
                               (self.ada_rew_pred == False) * self.train_dicts[0]['total_rew_loss'] + \
                               (self.ada_state_dynamics_pred == False) * self.train_dicts[0]['total_state_loss']
-
-            gvs = self.optimizer.compute_gradients(loss=self.total_loss, var_list=self.optvars)
+        
+            gvs = self.meta_optimizer.compute_gradients(loss=self.total_loss, var_list=self.optvars)
             self.gvs = [(tf.clip_by_value(grad, -self.clip_val_outer_grad, self.clip_val_outer_grad), var) for grad, var
                         in gvs]
-            self.metatrain_op = self.optimizer.apply_gradients(gvs)
+            self.metatrain_op = self.meta_optimizer.apply_gradients(gvs)
 
             ######### extrapolation op ################
             # self.oneTask_train_loss = self.train_loss(self.train_input[0], self.train_target[0], self.context)
-            self.fast_train_op = self.fast_optimizer.minimize(self.pre_adapt_losses, var_list=[self.context])
+            #self.fast_train_op = self.fast_optimizer.minimize(self.pre_adapt_losses, var_list=[self.context])
 
             ########################## Regular training ops and setup ############################
 
-            with tf.variable_scope(self.name + '_regular'):
-                self.sy_train_in = tf.placeholder(dtype=tf.float32,
-                                                  shape=[self.num_nets, None, self.layers[0].get_input_dim()],
-                                                  name="training_inputs")
-                self.sy_train_targ = self.train_target
-
-                train_loss = tf.reduce_sum(
-                    self._compile_losses(self.sy_train_in, self.sy_train_targ, inc_var_loss=True))
-                train_loss += tf.add_n(self.decays)
-                self.regular_train_loss = train_loss + 0.01 * tf.reduce_sum(self.max_logvar) - 0.01 * tf.reduce_sum(
-                    self.min_logvar)
-                self.mse_loss = self._compile_losses(self.sy_train_in, self.sy_train_targ, inc_var_loss=False)
-
-                reg_opt_vars = self.optvars.copy()
-                if self.context in self.optvars:
-                    reg_opt_vars.remove(self.context)
-                self.regular_train_op = self.regular_optimizer.minimize(self.regular_train_loss, var_list=reg_opt_vars)
+#            with tf.variable_scope(self.name + '_regular'):
+#                self.sy_train_in = tf.placeholder(dtype=tf.float32,
+#                                                  shape=[self.num_nets, None, self.layers[0].get_input_dim()],
+#                                                  name="training_inputs")
+#                self.sy_train_targ = self.train_target
+#
+#                train_loss = tf.reduce_sum(
+#                    self._compile_losses(self.sy_train_in, self.sy_train_targ, inc_var_loss=True))
+#                train_loss += tf.add_n(self.decays)
+#                self.regular_train_loss = train_loss + 0.01 * tf.reduce_sum(self.max_logvar) - 0.01 * tf.reduce_sum(
+#                    self.min_logvar)
+#                self.mse_loss = self._compile_losses(self.sy_train_in, self.sy_train_targ, inc_var_loss=False)
+#
+#                reg_opt_vars = self.optvars.copy()
+#                if self.context in self.optvars:
+#                    reg_opt_vars.remove(self.context)
+#                self.regular_train_op = self.regular_optimizer.minimize(self.regular_train_loss, var_list=reg_opt_vars)
 
             #########################################################################################
 
         # Initialize all variables
         self.sess.run(tf.variables_initializer(self.optvars + self.nonoptvars +
-                                               self.meta_optimizer.variables() + self.fast_optimizer.variables() +
-                                               self.regular_optimizer.variables()))
+                                               self.meta_optimizer.variables())) 
+                                               #+ self.fast_optimizer.variables() +
+                                               #self.regular_optimizer.variables()))
 
         ###### Setup prediction variables ######################
         with tf.variable_scope(self.name + '_regular'):
@@ -280,24 +264,24 @@ class BNN:
         tiled_contexts = tf.tile(self.context[None, None, :], (self.num_nets, tf.shape(train_input)[1], 1))
         pre_adapt_dict = self._get_model_loss_dict(train_input, tiled_contexts, train_target)
 
-        grad = tf.clip_by_value(tf.gradients(pre_adapt_dict['total_model_loss'], tiled_context)[0],
+        grad = tf.clip_by_value(tf.gradients(pre_adapt_dict['total_model_loss'], tiled_contexts)[0],
                                 -self.clip_val_inner_grad, self.clip_val_inner_grad)
         pre_adapt_dict['grad_norm'] = tf.norm(grad)
         all_dicts.append(pre_adapt_dict)
-        updated_contexts = tiled_context - self.fast_adapt_lr * grad
+        updated_contexts = tiled_contexts - self.fast_adapt_lr * grad
 
         for _ in range(self.fast_adapt_steps - 1):
             post_adapt_dict = self._get_model_loss_dict(train_input, updated_contexts, train_target,
                                                         add_rew_pred=self.ada_rew_pred,
                                                         add_state_pred=self.ada_state_dynamics_pred)
 
-            grad = tf.clip_by_value(tf.gradients(post_adapt_dict['total_model_loss'], updated_context)[0],
+            grad = tf.clip_by_value(tf.gradients(post_adapt_dict['total_model_loss'], updated_contexts)[0],
                                     -self.clip_val_inner_grad, self.clip_val_inner_grad)
             post_adapt_dict['grad_norm'] = tf.norm(grad)
             all_dicts.append(post_adapt_dict)
             updated_contexts = updated_contexts - self.fast_adapt_lr * grad
 
-        return updated_context, all_dicts
+        return updated_contexts, all_dicts
 
     def _save_state(self, idx):
         self._state[idx] = [layer.get_model_vars(idx, self.sess) for layer in self.layers]
@@ -517,7 +501,6 @@ class BNN:
                     named_holdout_losses = [['V{}'.format(i), holdout_losses[i]] for i in range(len(holdout_losses))]
                     named_losses = named_losses + named_holdout_losses + [['T', time.time() - t0]]
                     progress.set_description(named_losses)
-                    # import ipdb ; ipdb.set_trace()
                     break_train = self._save_best(epoch, holdout_losses)
 
             progress.update()
@@ -583,7 +566,12 @@ class BNN:
     def create_prediction_tensors(self, inputs, factored=False, *args, **kwargs):
         """See predict() above for documentation.
         """
-        factored_mean, factored_variance = self._compile_outputs(inputs)
+        
+        rew_mean, rew_logvar, state_mean, state_logvar = self.get_weighted_mean_logvar(
+            self._compile_output_layer(inputs))
+        factored_mean = tf.concat([rew_mean, state_mean], axis = -1)
+        factored_variance = tf.math.exp(tf.concat([rew_logvar, state_logvar], axis = -1))
+
         if inputs.shape.ndims == 2 and not factored:
             mean = tf.reduce_mean(factored_mean, axis=0)
             variance = tf.reduce_mean(tf.square(factored_mean - mean), axis=0) + \
@@ -627,16 +615,17 @@ class BNN:
     #######################
     # Compilation methods #
     #######################
-    def get_weighted_state_rew_mean_logvar(self, curr_out):
-
+    def get_weighted_mean_logvar(self, cur_out):
+        dim_output = self.layers[-1].get_output_dim()
         mean, logvar = cur_out[:, :, :dim_output // 2], cur_out[:, :, dim_output // 2:]
 
-        rew_mean = mean[:1] * self.reward_prediction_weight
-        state_mean = mean[1:]
+        rew_mean = mean[:,:,:1] * self.reward_prediction_weight
+        state_mean = mean[:,:,1:]
 
-        rew_logvar = self._incorporate_max_min_logvar(logvar[:1] + np.log(self.reward_prediction_weight ** 2),
+        rew_logvar = self._incorporate_max_min_logvar(logvar[:,:,:1] + np.log(self.reward_prediction_weight ** 2),
                                                       self.max_rew_logvar, self.min_rew_logvar)
-        state_logvar = self._incorporate_max_min_logvar(logvar[1:], self.max_state_logvar, self.min_state_logvar)
+        
+        state_logvar = self._incorporate_max_min_logvar(logvar[:,:,1:], self.max_state_logvar, self.min_state_logvar)
         # logvar = tf.concat([rew_logvar, state_logvar], axis=-1)
 
         return rew_mean, rew_logvar, state_mean, state_logvar
@@ -658,12 +647,11 @@ class BNN:
         Returns: (tf.Tensors) The mean and variance/log variance predictions at inputs for each network
             in the ensemble.
         """
-        dim_output = self.layers[-1].get_output_dim()
         cur_out = self.scaler.transform(inputs)
         for layer in self.layers:
             cur_out = layer.compute_output_tensor(cur_out)
 
-        return curr_out
+        return cur_out
         # return self.get_weighted_mean_logvar(curr_out)
 
         # if ret_log_var:
@@ -678,16 +666,16 @@ class BNN:
             total_model_loss += loss_dict['total_rew_loss']
         if add_state_pred:
             total_model_loss += loss_dict['total_state_loss']
-        loss_dict['total_model_loss'] = total_loss
+        loss_dict['total_model_loss'] = total_model_loss
         return loss_dict
 
     def _compile_losses(self, inputs, contexts, targets):
         inputs = tf.concat([inputs, contexts], axis=-1)
         rew_mean, rew_logvar, state_mean, state_logvar = self.get_weighted_mean_logvar(
             self._compile_output_layer(inputs))
-        total_rew_loss, mse_rew_loss = self._compile_log_likelihood(rew_mean, rew_logvar, targets[:, :1],
+        total_rew_loss, mse_rew_loss = self._compile_log_likelihood(rew_mean, rew_logvar, targets[:,:, :1],
                                                                     self.min_rew_logvar, self.max_rew_logvar)
-        total_state_loss, mse_state_loss = self._compile_log_likelihood(state_mean, state_logvar, targets[:, 1:],
+        total_state_loss, mse_state_loss = self._compile_log_likelihood(state_mean, state_logvar, targets[:,:, 1:],
                                                                         self.min_state_logvar, self.max_state_logvar)
 
         return OrderedDict({'total_rew_loss': total_rew_loss,
