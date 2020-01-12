@@ -1,12 +1,14 @@
-import tensorflow as tf
 import numpy as np
 import pickle
 import os.path as osp
 
+import numpy as np
 from rlkit.envs import ENVS
 from rlkit.envs.wrappers import NormalizedBoxEnv
 from models.constructor import construct_model
-from .misc_utils import  set_random_seed, TensorBoardLogger
+
+from .misc_utils import TensorBoardLogger
+
 
 class MIER:
 	
@@ -15,11 +17,11 @@ class MIER:
 		for key in variant:
 			setattr(self, key, variant['key'])
 		self.env = NormalizedBoxEnv(ENVS[self.env_name](**self.env_params))
-		self.model = construct_model(obs_dim = int(self.env.observation_space.shape[0]),
-									act_dim =  int(self.env.action_space.shape[0]),
-									model_hyperparams = variant.model_hyperparams
-									)
-	
+		self.model = construct_model(obs_dim=int(self.env.observation_space.shape[0]),
+									 act_dim=int(self.env.action_space.shape[0]),
+									 model_hyperparams=variant.model_hyperparams
+									 )
+		
 		self.logger = TensorBoardLogger(self.log_dir)
 		self.loaded_data = pickle.load(open(self.data_load_path, 'rb'))['replay_buffer']
 		self.loaded_data_size = [len(self.loaded_data[task]['observations']) for task in range(len(self.loaded_data))]
@@ -27,19 +29,20 @@ class MIER:
 	def train(self):
 		
 		for epoch in range(self.num_epochs):
-			self.model.save_model(osp.join(self.log_dir , 'Itr_' + str(epoch)))
+			self.model.save_model(osp.join(self.log_dir, 'Itr_' + str(epoch)))
 			self.run_training_epoch(epoch)
-			#TODO : add evaluation
+	
+	# TODO : add evaluation
 	
 	def sample_data(self, tasks):
 		
 		def get_data(task, key, idxs):
 			return self.loaded_data[task][key][idxs]
-	
+		
 		for i, task in enumerate(tasks):
 			idxs = np.random.choice(np.arange(self.loaded_data_size[task]), self.batch_size)
-			obs, acts, next_obs , rews = [get_data(task, key, idxs) for key in
-										  ['observations', 'actions', 'rewards', 'next_observations']]
+			obs, acts, next_obs, rews = [get_data(task, key, idxs) for key in
+										 ['observations', 'actions', 'rewards', 'next_observations']]
 			
 			if i == 0:
 				all_inputs = inputs;
@@ -50,9 +53,9 @@ class MIER:
 		
 		all_inputs = all_inputs * np.ones((FLAGS.num_networks,) + all_inputs.shape)
 		all_targets = all_targets * np.ones((FLAGS.num_networks,) + all_targets.shape)
-	
-		return all_inputs, all_targets
 		
+		return all_inputs, all_targets
+	
 	def run_training_epoch(self, epoch):
 		
 		for step in range(self.num_training_steps_per_epoch):
@@ -66,12 +69,11 @@ class MIER:
 			train_input, train_target = self.sample_data(tasks)
 			val_input, val_target = self.sample_data(tasks)
 			
+			feed_dict = {self.model.train_input: train_input,
+						 self.model.train_target: train_target,
+						 self.model.val_input: val_input,
+						 self.model.val_target: val_target}
 			
-			feed_dict = {self.model.train_input : train_input,
-						 self.model.train_target : train_target,
-						 self.model.val_input : val_input,
-						 self.model.val_target : val_target}
-				
 			_, updated_contexts, pre_adapt_losses, post_adapt_losses, gvs = self.sess.run(
 				[self.model.metatrain_op, self.model.updated_contexts,
 				 self.model.pre_adapt_losses, self.model.post_adapt_losses, self.model.gvs],
@@ -205,4 +207,3 @@ class MIER:
 				for _ in range(2):
 					data = self.get_sac_training_batch(256, context)
 					self.sac_trainer._do_training(step, data)
-	
