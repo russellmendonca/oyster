@@ -5,16 +5,13 @@ from __future__ import absolute_import
 import pickle
 import os
 import time
-import pdb
 import itertools
 from collections import OrderedDict
 
 import tensorflow as tf
 import numpy as np
-
-from models.utils import get_required_argument, TensorStandardScaler
+from models.utils import TensorStandardScaler
 from models.fc import FC
-
 from utils.logging import Progress, Silent
 
 np.set_printoptions(precision=5)

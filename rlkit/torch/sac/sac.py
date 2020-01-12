@@ -11,31 +11,31 @@ from rlkit.core.rl_algorithm import MetaRLAlgorithm
 
 class PEARLSoftActorCritic(MetaRLAlgorithm):
 	def __init__(
-			self,
-			env,
-			train_tasks,
-			eval_tasks,
-			latent_dim,
-			nets,
-			
-			policy_lr=1e-3,
-			qf_lr=1e-3,
-			vf_lr=1e-3,
-			context_lr=1e-3,
-			kl_lambda=1.,
-			policy_mean_reg_weight=1e-3,
-			policy_std_reg_weight=1e-3,
-			policy_pre_activation_weight=0.,
-			optimizer_class=optim.Adam,
-			recurrent=False,
-			use_information_bottleneck=True,
-			use_next_obs_in_context=False,
-			sparse_rewards=False,
-			
-			soft_target_tau=1e-2,
-			plotter=None,
-			render_eval_paths=False,
-			**kwargs
+		self,
+		env,
+		train_tasks,
+		eval_tasks,
+		latent_dim,
+		nets,
+		
+		policy_lr=1e-3,
+		qf_lr=1e-3,
+		vf_lr=1e-3,
+		context_lr=1e-3,
+		kl_lambda=1.,
+		policy_mean_reg_weight=1e-3,
+		policy_std_reg_weight=1e-3,
+		policy_pre_activation_weight=0.,
+		optimizer_class=optim.Adam,
+		recurrent=False,
+		use_information_bottleneck=True,
+		use_next_obs_in_context=False,
+		sparse_rewards=False,
+		
+		soft_target_tau=1e-2,
+		plotter=None,
+		render_eval_paths=False,
+		**kwargs
 	):
 		super().__init__(
 			env=env,
@@ -135,7 +135,7 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
 			indices = [indices]
 		batches = [ptu.np_to_pytorch_batch(
 			self.enc_replay_buffer.random_batch(idx, batch_size=self.embedding_batch_size, sequence=self.recurrent)) for
-				   idx in indices]
+			idx in indices]
 		context = [self.unpack_batch(batch, sparse_reward=self.sparse_rewards) for batch in batches]
 		# group like elements together
 		context = [[x[i] for x in context] for i in range(len(context[0]))]
@@ -240,7 +240,7 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
 		log_policy_target = min_q_new_actions
 		
 		policy_loss = (
-				log_pi - log_policy_target
+			log_pi - log_policy_target
 		).mean()
 		
 		mean_reg_loss = self.policy_mean_reg_weight * (policy_mean ** 2).mean()

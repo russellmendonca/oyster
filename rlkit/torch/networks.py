@@ -20,17 +20,17 @@ def identity(x):
 
 class Mlp(PyTorchModule):
 	def __init__(
-			self,
-			hidden_sizes,
-			output_size,
-			input_size,
-			init_w=3e-3,
-			hidden_activation=F.relu,
-			output_activation=identity,
-			hidden_init=ptu.fanin_init,
-			b_init_value=0.1,
-			layer_norm=False,
-			layer_norm_kwargs=None,
+		self,
+		hidden_sizes,
+		output_size,
+		input_size,
+		init_w=3e-3,
+		hidden_activation=F.relu,
+		output_activation=identity,
+		hidden_init=ptu.fanin_init,
+		b_init_value=0.1,
+		layer_norm=False,
+		layer_norm_kwargs=None,
 	):
 		self.save_init_params(locals())
 		super().__init__()
@@ -96,10 +96,10 @@ class MlpPolicy(Mlp, Policy):
 	"""
 	
 	def __init__(
-			self,
-			*args,
-			obs_normalizer: TorchFixedNormalizer = None,
-			**kwargs
+		self,
+		*args,
+		obs_normalizer: TorchFixedNormalizer = None,
+		**kwargs
 	):
 		self.save_init_params(locals())
 		super().__init__(*args, **kwargs)

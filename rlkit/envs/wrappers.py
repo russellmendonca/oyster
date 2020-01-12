@@ -46,11 +46,11 @@ class NormalizedBoxEnv(ProxyEnv, Serializable):
 	"""
 	
 	def __init__(
-			self,
-			env,
-			reward_scale=1.,
-			obs_mean=None,
-			obs_std=None,
+		self,
+		env,
+		reward_scale=1.,
+		obs_mean=None,
+		obs_std=None,
 	):
 		# self._wrapped_env needs to be called first because
 		# Serializable.quick_init calls getattr, on this class. And the

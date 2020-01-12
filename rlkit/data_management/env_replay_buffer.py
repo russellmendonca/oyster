@@ -6,10 +6,10 @@ from gym.spaces import Box, Discrete, Tuple
 
 class MultiTaskReplayBuffer(object):
 	def __init__(
-			self,
-			max_replay_buffer_size,
-			env,
-			tasks,
+		self,
+		max_replay_buffer_size,
+		env,
+		tasks,
 	):
 		"""
 		:param max_replay_buffer_size:

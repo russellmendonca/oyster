@@ -121,8 +121,8 @@ class TensorBoardLogger(object):
 
 def unwrapped_env(env):
 	if isinstance(env, wrappers.TimeLimit) \
-			or isinstance(env, wrappers.Monitor) \
-			or isinstance(env, wrappers.FlattenDictWrapper):
+		or isinstance(env, wrappers.Monitor) \
+		or isinstance(env, wrappers.FlattenDictWrapper):
 		return env.unwrapped
 	return env
 

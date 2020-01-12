@@ -46,11 +46,11 @@ def get_average_returns(paths):
 
 
 def create_stats_ordered_dict(
-		name,
-		data,
-		stat_prefix=None,
-		always_show_all_stats=True,
-		exclude_max_min=False,
+	name,
+	data,
+	stat_prefix=None,
+	always_show_all_stats=True,
+	exclude_max_min=False,
 ):
 	if stat_prefix is not None:
 		name = "{} {}".format(stat_prefix, name)
@@ -79,7 +79,7 @@ def create_stats_ordered_dict(
 			data = np.concatenate(data)
 	
 	if (isinstance(data, np.ndarray) and data.size == 1
-			and not always_show_all_stats):
+		and not always_show_all_stats):
 		return OrderedDict({name: float(data)})
 	
 	stats = OrderedDict([

@@ -249,7 +249,7 @@ def _type(string, has_invisible=True):
 	"""
 	
 	if has_invisible and \
-			(isinstance(string, _text_type) or isinstance(string, _binary_type)):
+		(isinstance(string, _text_type) or isinstance(string, _binary_type)):
 		string = _strip_invisible(string)
 	
 	if string is None:
@@ -499,8 +499,8 @@ def _normalize_tabular_data(tabular_data, headers):
 		rows = list(tabular_data)
 		
 		if (headers == "keys" and
-				hasattr(tabular_data, "dtype") and
-				getattr(tabular_data.dtype, "names")):
+			hasattr(tabular_data, "dtype") and
+			getattr(tabular_data.dtype, "names")):
 			# numpy record array
 			headers = tabular_data.dtype.names
 		elif (headers == "keys"
