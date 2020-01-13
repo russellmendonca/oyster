@@ -96,15 +96,16 @@ class TensorBoardLogger(object):
             encoded_image_string=image_string
         )
 
-    def log_dict(self, step, data):
+    def log_dict(self, step, data, name_prefix=''):
 
         summary = tf.Summary(
             value=[
-                tf.Summary.Value(tag=name, simple_value=value)
+                tf.Summary.Value(tag=name_prefix+name, simple_value=value)
                 for name, value in data.items() if value is not None
             ]
         )
-        direct_logging(data, self.output_dir + 'logs/')
+        
+        direct_logging(data, os.path.join(self.output_dir ,'logs/'))
         self.file_writer.add_summary(summary, step)
 
     def flush(self):

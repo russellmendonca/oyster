@@ -1,2 +1,2 @@
 # Change this
-LOCAL_LOG_DIR = 'output'
+LOCAL_LOG_DIR = 'output/pearl'

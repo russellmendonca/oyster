@@ -1,6 +1,7 @@
 {
   "env_name": "cheetah-vel",
   "log_annotation": "vel-0-1",
+  "mier_annotation":"rew-and-invariant-state-pred",
   "n_train_tasks": 100,
   "n_eval_tasks": 30,
   "env_params": {
@@ -17,5 +18,9 @@
     "embedding_batch_size": 100,
     "embedding_mini_batch_size": 100
   },
-  "data_load_path": "/home/russell/oyster/"
+  "model_hyperparams":{
+    "ada_state_dynamics_pred":false,
+    "reg_weight":0
+  }
+
 }

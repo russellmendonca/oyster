@@ -36,7 +36,8 @@ class MIER:
     def train(self):
 
         for epoch in range(self.num_epochs):
-            self.model.save_model(osp.join(self.log_dir, 'Itr_' + str(epoch)))
+            print('epoch '+str(epoch))
+            self.model.save_model(self.log_dir, epoch)
             self.run_training_epoch(epoch)
             self.eval(epoch)
    
@@ -77,18 +78,16 @@ class MIER:
 
     def eval(self, epoch):
 
-        train_info_dicts, post_adapt_val_dict = self.sess.run(
-            [self.model.train_dicts, self.model.post_adapt_val_dict],
-            feed_dict=self._get_feed_dict(self.train_tasks))
-        print('eval completed')
+        post_adapt_val_dict = self.sess.run(self.model.post_adapt_val_dict,
+            feed_dict=self._get_feed_dict(np.arange(self.n_train_tasks)))
+        
+        self.logger.log_dict(epoch, post_adapt_val_dict, 'eval-all-training-tasks/' )
 
     def run_training_epoch(self, epoch):
-
+    
         for step in range(self.num_training_steps_per_epoch):
-            # print(self.sess.run(self.meta_model.context))
-            if step % 100 == 0:
-                print('step ', step)
-
+#            if step%100 == 0:
+#                print('step')
             tasks = np.random.choice(np.arange(self.n_train_tasks), self.model.meta_batch_size,
                                      replace=self.model.meta_batch_size > self.n_train_tasks)
 
@@ -96,15 +95,12 @@ class MIER:
                 [self.model.metatrain_op, self.model.updated_contexts,
                  self.model.train_dicts, self.model.post_adapt_val_dict],
                 feed_dict=self._get_feed_dict(tasks))
-
-#            if (step + 1) % FLAGS.num_training_steps_per_epoch == 0:
-#                self.logger.log_dict(epoch, {'Model/preAda_ModelLoss': np.mean(pre_adapt_losses),
-#                                             'Model/postAda_ModelLoss': np.mean(post_adapt_losses),
-#                                             'Model/var_norms': np.mean([np.linalg.norm(var) for _, var in gvs]),
-#                                             'Model/grad_norms': np.mean([np.linalg.norm(grad) for grad, _ in gvs]),
-#                                             'Model/updated_context_norms': np.mean(
-#                                                 [np.linalg.norm(context) for context in updated_contexts])
-#                                             })
+           
+            if (step + 1) % self.num_training_steps_per_epoch == 0:
+                for i, train_info_dict in enumerate(train_info_dicts):
+                    self.logger.log_dict(epoch, train_info_dict, 'meta-train-step-'+str(i)+'/' )
+                
+                self.logger.log_dict(epoch, post_adapt_val_dict, 'post-adapt-val/' )
 
     def _rollout_model(self, context, rollout_batch_size, **kwargs):
         print('[ Model Rollout ] Starting | Rollout length: {} | Batch size: {}'.format(

@@ -19,8 +19,8 @@ def main(config, seed, load_epoch):
 
     exp_name = osp.join(variant['env_name'], 
             variant['log_annotation'], 'seed-' + str(seed))
-    variant['log_dir'] = osp.join('mier_models', exp_name)
-    variant['data_load_path'] = osp.join('output', exp_name, 'extra_data', 'epoch_'+str(load_epoch)+'.pkl')
+    variant['log_dir'] = osp.join('output', 'mier', variant['mier_annotation'], exp_name)
+    variant['data_load_path'] = osp.join('output', 'pearl', exp_name, 'extra_data', 'epoch_'+str(load_epoch)+'.pkl')
 
     mier_obj = MIER(variant)
     mier_obj.train()
