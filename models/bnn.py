@@ -186,23 +186,22 @@ class BNN:
                                              shape=[self.num_nets, None, self.layers[-1].get_output_dim() // 2],
                                              name="val_target")
 
-
-            tiled_contexts = tf.tile(self.context[None, None, :], (self.num_nets, tf.shape(self.train_input)[1], 1))
-            self.task_invariant_pred_loss = self._get_model_loss_dict(self.train_input, tiled_contexts, self.train_target,
+            self.task_invariant_pred_loss = self._get_model_loss_dict(self.train_input, self.context, self.train_target,
                                                    add_rew_pred=not(self.ada_rew_pred),
                                                    add_state_pred=not(self.ada_state_dynamics_pred))['total_model_loss']
 
-            self.updated_contexts, self.train_dicts = self.get_updated_contexts(tiled_contexts, self.train_input, self.train_target)
+            self.updated_context_list, self.tiled_updated_contexts, \
+            self.train_dicts = self.get_updated_contexts(self.train_input, self.train_target)
 
-            self.pre_adapt_train_loss = self.train_dicts[0]['total_model_loss']
-            self.post_adapt_train_loss = self.train_dicts[-1]['total_model_loss']
-            self.post_adapt_val_dict = self._get_model_loss_dict(self.val_input, self.updated_contexts, self.val_target,
+            self.post_adapt_val_dict = self._get_model_loss_dict(self.val_input, self.val_target,
+                                                                 self.tiled_updated_contexts,
                                                                  add_rew_pred=self.ada_rew_pred,
                                                                  add_state_pred=self.ada_state_dynamics_pred)
             self.post_adapt_val_loss = self.post_adapt_val_dict['total_model_loss']
 
-            self.total_loss = self.post_adapt_val_loss + (self.reg_weight / self.meta_batch_size) * tf.norm( 
-                self.updated_contexts - self.context) + self.task_invariant_pred_loss 
+            self.total_loss = self.post_adapt_val_loss + \
+                              (self.reg_weight / self.meta_batch_size) * tf.norm(self.tiled_updated_contexts - self.context) + \
+                              self.task_invariant_pred_loss
                 #(self.task_invariant_pred_loss*0)
                               #(self.ada_rew_pred == False) * self.train_dicts[0]['total_rew_loss'] + \
                               #(self.ada_state_dynamics_pred == False) * self.train_dicts[0]['total_state_loss']
@@ -264,33 +263,50 @@ class BNN:
         ######################################################################################
         self.finalized = True
 
-    def get_updated_contexts(self, tiled_contexts,  train_input, train_target):
-        """ Perform gradient descent for one task in the meta-batch. """
+    def tile_context(self, context, input_dim):
+        return tf.tile(context[None, None, :], (self.num_nets, input_dim ,1))
+
+    def process_contexts(self, context_list, tiled_grads):
+        task_grads = [tf.reduce_mean(tf.reshape(task_grad, (-1, self.context_dim)), axis=0) for task_grad in
+                      tf.split(tiled_grads, num_tasks, axis=1)]
+        # updated_contexts = tiled_contexts - self.fast_adapt_lr * grad
+        updated_context_list = [ context - self.fast_adapt_lr * grad for context, grad in zip(context_list, task_grads)]
+        tiled_updated_contexts =  tf.concat([self.tile_context(context, num_data_points//num_tasks)
+                                                                   for context in updated_context_list], axis = 0)
+        return updated_context_list , tiled_updated_contexts
+
+    def get_updated_contexts(self, train_input, train_target, num_tasks):
 
         all_dicts = []
-        pre_adapt_dict = self._get_model_loss_dict(train_input, tiled_contexts, train_target,
+        assert self.num_nets == 1
+        num_data_points = tf.shape(train_input)[1]
+        #tiled_contexts = self.tile_context(self.context, num_data_points)
+        pre_adapt_dict = self._get_model_loss_dict(train_input, train_target,
+                                                   self.tile_context(self.context, num_data_points),
                                                    add_rew_pred=self.ada_rew_pred,
                                                    add_state_pred=self.ada_state_dynamics_pred)
 
-        grad = tf.clip_by_value(tf.gradients(pre_adapt_dict['total_model_loss'], tiled_contexts)[0],
+        grads = tf.clip_by_value(tf.gradients(pre_adapt_dict['total_model_loss'], tiled_contexts)[0],
                                 -self.clip_val_inner_grad, self.clip_val_inner_grad)
-        pre_adapt_dict['grad_norm'] = tf.norm(grad)
+        pre_adapt_dict['grad_norm'] = tf.norm(grads)
         all_dicts.append(pre_adapt_dict)
-        updated_contexts = tiled_contexts - self.fast_adapt_lr * grad
+
+        updated_context_list, tiled_updated_contexts = self.process_contexts([self.context for _ in range(num_tasks)], grads)
 
         for step in range(self.fast_adapt_steps):
-            post_adapt_dict = self._get_model_loss_dict(train_input, updated_contexts, train_target,
+            post_adapt_dict = self._get_model_loss_dict(train_input, train_target,
+                                                        tiled_updated_contexts,
                                                         add_rew_pred=self.ada_rew_pred,
                                                         add_state_pred=self.ada_state_dynamics_pred)
 
-            grad = tf.clip_by_value(tf.gradients(post_adapt_dict['total_model_loss'], updated_contexts)[0],
+            grads = tf.clip_by_value(tf.gradients(post_adapt_dict['total_model_loss'], tiled_updated_contexts)[0],
                                     -self.clip_val_inner_grad, self.clip_val_inner_grad)
-            post_adapt_dict['grad_norm'] = tf.norm(grad)
+            post_adapt_dict['grad_norm'] = tf.norm(grads)
             all_dicts.append(post_adapt_dict)
             if step < self.fast_adapt_steps-1:
-                updated_contexts = updated_contexts - self.fast_adapt_lr * grad
+                updated_context_list, tiled_updated_contexts = self.process_contexts(updated_context_list, grads)
      
-        return updated_contexts, all_dicts
+        return updated_context_list, tiled_updated_contexts, all_dicts
 
     def _save_state(self, idx):
         self._state[idx] = [layer.get_model_vars(idx, self.sess) for layer in self.layers]
@@ -668,9 +684,9 @@ class BNN:
         # else:
         #     return mean, tf.exp(logvar)
 
-    def _get_model_loss_dict(self, inputs, contexts, targets, add_state_pred=True, add_rew_pred=True):
+    def _get_model_loss_dict(self, inputs,  targets, tiled_contexts, add_state_pred=True, add_rew_pred=True):
         total_model_loss = 0
-        loss_dict = self._compile_losses(inputs, contexts, targets)
+        loss_dict = self._compile_losses(inputs, targets, tiled_contexts)
         if add_rew_pred:
             total_model_loss += loss_dict['total_rew_loss']
         if add_state_pred:
@@ -678,8 +694,9 @@ class BNN:
         loss_dict['total_model_loss'] = total_model_loss
         return loss_dict
 
-    def _compile_losses(self, inputs, contexts, targets):
-        inputs = tf.concat([inputs, contexts], axis=-1)
+    def _compile_losses(self, inputs, targets, tiled_contexts):
+
+        inputs = tf.concat([inputs, tiled_contexts], axis=-1)
         rew_mean, rew_logvar, state_mean, state_logvar = self.get_weighted_mean_logvar(
             self._compile_output_layer(inputs))
         total_rew_loss, mse_rew_loss = self._compile_log_likelihood(rew_mean, rew_logvar, targets[:,:, :1],
