@@ -35,6 +35,7 @@ import csv
 
 
 def direct_logging(data, output_dir):
+    #import ipdb ; ipdb.set_trace()   
     for metric in data:
         metric_dir = output_dir + metric
         if os.path.isdir(metric_dir) != True:
@@ -95,12 +96,18 @@ class TensorBoardLogger(object):
             colorspace=channel,
             encoded_image_string=image_string
         )
+    def add_name_prefix_to_dict(self, _dict, prefix):
+        new_dict = {}
+        for key in _dict:
+            new_dict[prefix+key] = _dict[key]
+        return new_dict
 
     def log_dict(self, step, data, name_prefix=''):
-
+        
+        data = self.add_name_prefix_to_dict(data, name_prefix)
         summary = tf.Summary(
             value=[
-                tf.Summary.Value(tag=name_prefix+name, simple_value=value)
+                tf.Summary.Value(tag=name, simple_value=value)
                 for name, value in data.items() if value is not None
             ]
         )

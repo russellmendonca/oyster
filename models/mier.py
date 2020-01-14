@@ -76,13 +76,22 @@ class MIER:
                      self.model.val_input: val_input,
                      self.model.val_target: val_target}
 
+    
+    def log_info_dict(self,epoch, _dict, prefix = ''):
+        for i, train_info_dict in enumerate(_dict['train_dicts']):
+            self.logger.log_dict(epoch, train_info_dict, prefix+'-step-'+str(i)+'/' )
+                
+            self.logger.log_dict(epoch, _dict['post_adapt_val_dict'], prefix+'-post-adapt-val/' )
+            self.logger.log_dict(epoch, {'norm': np.linalg.norm(_dict['updated_context_list'])},
+                                    prefix+'-updated-context-norm/')
+
     def eval(self, epoch):
 
-        post_adapt_val_dict = self.sess.run(self.model.post_adapt_val_dict,
+        eval_dict = self.sess.run(self.model.eval_dict,
             feed_dict=self._get_feed_dict(np.arange(self.n_train_tasks)))
         
-        self.logger.log_dict(epoch, post_adapt_val_dict, 'eval-all-training-tasks/' )
-
+        self.log_info_dict(epoch, eval_dict, 'eval')
+    
     def run_training_epoch(self, epoch):
     
         for step in range(self.num_training_steps_per_epoch):
@@ -91,16 +100,11 @@ class MIER:
             tasks = np.random.choice(np.arange(self.n_train_tasks), self.model.meta_batch_size,
                                      replace=self.model.meta_batch_size > self.n_train_tasks)
 
-            _, updated_contexts, train_info_dicts, post_adapt_val_dict = self.sess.run(
-                [self.model.metatrain_op, self.model.updated_contexts,
-                 self.model.train_dicts, self.model.post_adapt_val_dict],
+            _, meta_train_dict = self.sess.run([self.model.metatrain_op, self.model.meta_train_dict],
                 feed_dict=self._get_feed_dict(tasks))
-           
+
             if (step + 1) % self.num_training_steps_per_epoch == 0:
-                for i, train_info_dict in enumerate(train_info_dicts):
-                    self.logger.log_dict(epoch, train_info_dict, 'meta-train-step-'+str(i)+'/' )
-                
-                self.logger.log_dict(epoch, post_adapt_val_dict, 'post-adapt-val/' )
+                self.log_info_dict(epoch, meta_train_dict, 'meta-train')
 
     def _rollout_model(self, context, rollout_batch_size, **kwargs):
         print('[ Model Rollout ] Starting | Rollout length: {} | Batch size: {}'.format(
