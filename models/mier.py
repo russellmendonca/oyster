@@ -23,7 +23,8 @@ class MIER:
                                      act_dim=int(self.env.action_space.shape[0]),
                                      model_hyperparams=self.model_hyperparams
                                      )
-
+        if self.model.load_saved_model_path:
+            self.model.load_model(self.model.load_saved_model_path)
         self.logger = TensorBoardLogger(self.log_dir)
         self.loaded_data = pickle.load(open(self.data_load_path, 'rb'))['replay_buffer']
         self.loaded_data_size = [len(self.loaded_data[task]['observations']) for task in range(len(self.loaded_data))]
@@ -86,7 +87,7 @@ class MIER:
                                     prefix+'-updated-context-norm/')
 
     def eval(self, epoch):
-
+ 
         eval_dict = self.sess.run(self.model.eval_dict,
             feed_dict=self._get_feed_dict(np.arange(self.n_train_tasks)))
         
@@ -102,7 +103,8 @@ class MIER:
 
             _, meta_train_dict = self.sess.run([self.model.metatrain_op, self.model.meta_train_dict],
                 feed_dict=self._get_feed_dict(tasks))
-
+            
+            import ipdb ; ipdb.set_trace()
             if (step + 1) % self.num_training_steps_per_epoch == 0:
                 self.log_info_dict(epoch, meta_train_dict, 'meta-train')
 

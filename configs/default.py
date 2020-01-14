@@ -69,6 +69,7 @@ default_mier_config = dict(
     num_training_steps_per_epoch=500,
     model_hyperparams=dict(
         name = 'BNN', 
+        load_saved_model_path=None,
         num_nets = 1,
         num_elites = 1,
         context_dim=5,

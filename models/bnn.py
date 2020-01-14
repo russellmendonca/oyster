@@ -194,7 +194,7 @@ class BNN:
             self.meta_train_dict = self.compile_adaptation_step(num_tasks = self.meta_batch_size)
             self.eval_dict       = self.compile_adaptation_step(num_tasks = self.num_eval_tasks)
             
-            self.total_loss = self.meta_train_dict['post_adapt_val_dict']['total_model_loss'] + (0*self.task_invariant_pred_loss)
+            self.total_loss = self.meta_train_dict['post_adapt_val_dict']['total_model_loss'] + self.task_invariant_pred_loss
                               #(self.reg_weight / self.meta_batch_size) * tf.norm(self.tiled_updated_contexts - self.context) + \
                               #self.task_invariant_pred_loss
                 #(self.task_invariant_pred_loss*0)
@@ -622,9 +622,9 @@ class BNN:
             val_dict[var.name] = self.sess.run(var)
         pickle.dump(val_dict, open(os.path.join(model_dir, 'epoch_'+str(epoch)+'.pkl'), 'wb'))
 
-    def load_model(self, _dir):
+    def load_model(self, _file):
 
-        model_var_vals = pickle.load(open(_dir + 'meta_model.pkl', 'rb'))
+        model_var_vals = pickle.load(open(_file, 'rb'))
         for var in (self.nonoptvars + self.optvars):
             self.sess.run(tf.assign(var, model_var_vals[var.name]))
 
