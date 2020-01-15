@@ -21,7 +21,7 @@
   "model_hyperparams":{
     "ada_state_dynamics_pred":false,
     "reg_weight":0,
-    "num_eval_tasks":1,
+    "num_eval_tasks":20,
     "load_saved_model_path": "output/mier/rew-and-invariant-state-pred/cheetah-vel/vel-0-1/seed-0/models/epoch_200.pkl" 
   }
 

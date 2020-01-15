@@ -297,6 +297,7 @@ class BNN:
 
         grads = tf.clip_by_value(tf.gradients(pre_adapt_dict['total_model_loss'], tiled_contexts)[0],
                                 -self.clip_val_inner_grad, self.clip_val_inner_grad)
+        
         pre_adapt_dict['grad_norm'] = tf.norm(grads)
         all_dicts.append(pre_adapt_dict)
 

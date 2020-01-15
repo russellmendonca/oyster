@@ -88,10 +88,13 @@ class MIER:
 
     def eval(self, epoch):
  
-        eval_dict = self.sess.run(self.model.eval_dict,
-            feed_dict=self._get_feed_dict(np.arange(self.n_train_tasks)))
+        #eval_dict = self.sess.run(self.model.eval_dict,
+        #    feed_dict=self._get_feed_dict(np.arange(self.n_train_tasks)))
         
-        self.log_info_dict(epoch, eval_dict, 'eval')
+        #self.log_info_dict(epoch, eval_dict, 'eval')
+        for i in range(10):
+            info_dict = self.sess.run(self.model.meta_train_dict, feed_dict = self._get_feed_dict(np.arange(i*10, (i+1)*10)))
+            print(info_dict['post_adapt_val_dict']['mse_rew_loss'])
     
     def run_training_epoch(self, epoch):
     
@@ -103,8 +106,7 @@ class MIER:
 
             _, meta_train_dict = self.sess.run([self.model.metatrain_op, self.model.meta_train_dict],
                 feed_dict=self._get_feed_dict(tasks))
-            
-            import ipdb ; ipdb.set_trace()
+               
             if (step + 1) % self.num_training_steps_per_epoch == 0:
                 self.log_info_dict(epoch, meta_train_dict, 'meta-train')
 
