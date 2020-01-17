@@ -17,6 +17,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         agent,
         train_tasks,
         eval_tasks,
+        exp_mode='TRAIN',
         meta_batch=64,
         num_iterations=100,
         num_train_steps_per_itr=1000,
@@ -59,6 +60,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self.exploration_agent = agent  # Can potentially use a different policy purely for exploration rather than also solving tasks, currently not being used
         self.train_tasks = train_tasks
         self.eval_tasks = eval_tasks
+        self.exp_mode = exp_mode
         self.meta_batch = meta_batch
         self.num_iterations = num_iterations
         self.num_train_steps_per_itr = num_train_steps_per_itr
@@ -232,7 +234,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self._n_env_steps_total += num_transitions
         gt.stamp('sample')
 
-    def _try_to_eval(self, epoch):
+    def _try_to_eval(self, epoch=0):
         if epoch % self.save_extra_data_interval == 0:
             logger.save_extra_data(self.get_extra_data_to_save(epoch), epoch)
         if self._can_evaluate():
@@ -260,18 +262,18 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
                 self._n_rollouts_total,
             )
 
-            times_itrs = gt.get_times().stamps.itrs
-            train_time = times_itrs['train'][-1]
-            sample_time = times_itrs['sample'][-1]
-            eval_time = times_itrs['eval'][-1] if epoch > 0 else 0
-            epoch_time = train_time + sample_time + eval_time
-            total_time = gt.get_times().total
+         #   times_itrs = gt.get_times().stamps.itrs
+         #   train_time = times_itrs['train'][-1]
+         #   sample_time = times_itrs['sample'][-1]
+         #   eval_time = times_itrs['eval'][-1] if epoch > 0 else 0
+         #   epoch_time = train_time + sample_time + eval_time
+         #   total_time = gt.get_times().total
 
-            logger.record_tabular('Train Time (s)', train_time)
-            logger.record_tabular('(Previous) Eval Time (s)', eval_time)
-            logger.record_tabular('Sample Time (s)', sample_time)
-            logger.record_tabular('Epoch Time (s)', epoch_time)
-            logger.record_tabular('Total Train Time (s)', total_time)
+         #   logger.record_tabular('Train Time (s)', train_time)
+         #   logger.record_tabular('(Previous) Eval Time (s)', eval_time)
+         #   logger.record_tabular('Sample Time (s)', sample_time)
+         #   logger.record_tabular('Epoch Time (s)', epoch_time)
+         #   logger.record_tabular('Total Train Time (s)', total_time)
 
             logger.record_tabular("Epoch", epoch)
             logger.dump_tabular(with_prefix=False, with_timestamp=False)
@@ -416,57 +418,32 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
         ### train tasks
         # eval on a subset of train tasks for speed
-        indices = np.random.choice(self.train_tasks, len(self.eval_tasks))
-        eval_util.dprint('evaluating on {} train tasks'.format(len(indices)))
-        ### eval train tasks with posterior sampled from the training replay buffer
-        train_returns = []
-        for idx in indices:
-            self.task_idx = idx
-            self.env.reset_task(idx)
-            paths = []
-            for _ in range(self.num_steps_per_eval // self.max_path_length):
-                context = self.sample_context(idx)
-                self.agent.infer_posterior(context)
-                p, _ = self.sampler.obtain_samples(deterministic=self.eval_deterministic,
-                                                   max_samples=self.max_path_length,
-                                                   accum_context=False,
-                                                   max_trajs=1,
-                                                   resample=np.inf)
-                paths += p
+        if self.exp_mode == 'TRAIN':
+            indices = np.random.choice(self.train_tasks, len(self.eval_tasks))
+            eval_util.dprint('evaluating on {} train tasks'.format(len(indices)))
 
-            if self.sparse_rewards:
-                for p in paths:
-                    sparse_rewards = np.stack(e['sparse_reward'] for e in p['env_infos']).reshape(-1, 1)
-                    p['rewards'] = sparse_rewards
-
-            train_returns.append(eval_util.get_average_returns(paths))
-        train_returns = np.mean(train_returns)
         ### eval train tasks with on-policy data to match eval of test tasks
-        train_final_returns, train_online_returns = self._do_eval(indices, epoch)
-        eval_util.dprint('train online returns')
-        eval_util.dprint(train_online_returns)
+            train_final_returns, train_online_returns = self._do_eval(indices, epoch)
+            eval_util.dprint('train online returns')
+            eval_util.dprint(train_online_returns)
+
+            avg_train_return = np.mean(train_final_returns)
+            self.eval_statistics['AverageReturn_all_train_tasks'] = avg_train_return
 
         ### test tasks
         eval_util.dprint('evaluating on {} test tasks'.format(len(self.eval_tasks)))
         test_final_returns, test_online_returns = self._do_eval(self.eval_tasks, epoch)
         eval_util.dprint('test online returns')
         eval_util.dprint(test_online_returns)
-
-        # save the final posterior
-        self.agent.log_diagnostics(self.eval_statistics)
-
-        if hasattr(self.env, "log_diagnostics"):
-            self.env.log_diagnostics(paths, prefix=None)
-
-        avg_train_return = np.mean(train_final_returns)
+        
         avg_test_return = np.mean(test_final_returns)
-        avg_train_online_return = np.mean(np.stack(train_online_returns), axis=0)
-        avg_test_online_return = np.mean(np.stack(test_online_returns), axis=0)
-        self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
-        self.eval_statistics['AverageReturn_all_train_tasks'] = avg_train_return
+        #self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
         self.eval_statistics['AverageReturn_all_test_tasks'] = avg_test_return
+        for i, _ret in enumerate(test_final_returns):
+            self.eval_statistics['eval_task'+str(i)+'_return'] = _ret
         #        logger.save_extra_data(avg_train_online_return, path='online-train-epoch{}'.format(epoch))
         #        logger.save_extra_data(avg_test_online_return, path='online-test-epoch{}'.format(epoch))
+        self.agent.log_diagnostics(self.eval_statistics)
 
         for key, value in self.eval_statistics.items():
             logger.record_tabular(key, value)

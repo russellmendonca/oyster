@@ -12,6 +12,7 @@ default_pearl_config = dict(
         randomize_tasks=True,  # shuffle the tasks after creating them
     ),
     algo_params=dict(
+        exp_mode='TRAIN', # other mode is eval
         meta_batch=16,  # number of tasks to average the gradient across
         num_iterations=500,  # number of data sampling / training iterates
         num_initial_steps=2000,  # number of transitions collected per task before training

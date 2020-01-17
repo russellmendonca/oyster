@@ -1,7 +1,6 @@
 {
   "env_name": "cheetah-vel",
-  "log_annotation": "vel-0-1",
-  "mier_annotation":"trial",
+  "log_annotation": "trial",
   "n_train_tasks": 100,
   "n_eval_tasks": 30,
   "env_params": {
@@ -17,12 +16,5 @@
     "num_exp_traj_eval": 2,
     "embedding_batch_size": 100,
     "embedding_mini_batch_size": 100
-  },
-  "model_hyperparams":{
-    "ada_state_dynamics_pred":false,
-    "reg_weight":0,
-    "num_eval_tasks":20,
-    "load_saved_model_path": "output/mier/rew-and-invariant-state-pred/cheetah-vel/vel-0-1/seed-0/models/epoch_200.pkl" 
   }
-
 }
