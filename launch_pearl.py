@@ -115,10 +115,10 @@ def main(config, seed):
     variant['util_params']['gpu_id'] = gpu_id
     exp_log_name = variant['env_name'] + '/' + variant['log_annotation'] + '/seed_' + str(seed)
     setup_logger(exp_log_name, variant=variant, exp_id=None, base_log_dir=variant['util_params']['base_log_dir'])
-    variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
-    variant['algo_params']['exp_mode'] = 'EVAL'
-    variant['n_train_tasks'] = 0
-    variant['n_eval_tasks']=10
+    #variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
+    variant['algo_params']['exp_mode'] = 'TRAIN'
+    #variant['n_train_tasks'] = 0
+    #variant['n_eval_tasks']=10
     experiment(variant)
 
 

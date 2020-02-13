@@ -26,8 +26,8 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
 
     def __init__(self, task={}, n_tasks=2, randomize_tasks=True):
         self._task = task
-        #self.tasks = self.sample_tasks(n_tasks)
-        self.tasks = [{'velocity': velocity} for velocity in np.arange(0.5,4.1, 0.5)]
+        self.tasks = self.sample_tasks(n_tasks)
+        #self.tasks = [{'velocity': velocity} for velocity in np.arange(0.5,4.1, 0.5)]
         self._goal_vel = self.tasks[0].get('velocity', 0.0)
         self._goal = self._goal_vel
         super(HalfCheetahVelEnv, self).__init__()
@@ -50,8 +50,8 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
 
     def sample_tasks(self, num_tasks):
         np.random.seed(1337)
-        velocities = np.random.uniform(0.0, 1.0, size=(num_tasks,))
-        #velocities = np.linspace(0.0, 3.0, num = 100)
+        #velocities = np.random.uniform(0.0, 1.0, size=(num_tasks,))
+        velocities = np.linspace(0.0, 3.0, num = 100)
         tasks = [{'velocity': velocity} for velocity in velocities]
         return tasks
 
