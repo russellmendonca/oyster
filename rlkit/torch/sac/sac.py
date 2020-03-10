@@ -1,8 +1,10 @@
 from collections import OrderedDict
+
 import numpy as np
 import torch
 import torch.optim as optim
 from torch import nn as nn
+
 import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.core.rl_algorithm import MetaRLAlgorithm
@@ -60,7 +62,6 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         self.l2_reg_criterion = nn.MSELoss()
         self.kl_lambda = kl_lambda
 
-
         self.use_information_bottleneck = use_information_bottleneck
         self.sparse_rewards = sparse_rewards
         self.use_next_obs_in_context = use_next_obs_in_context
@@ -74,8 +75,8 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
                 self.target_entropy = target_entropy
             else:
                 self.target_entropy = -np.prod(self.env.action_space.shape).item()  # heuristic value from Tuomas
-            #self.log_alpha = ptu.zeros( 1, requires_grad=True)
-            self.log_alpha = torch.zeros(1, requires_grad = True, device = ptu.device.type)
+            # self.log_alpha = ptu.zeros( 1, requires_grad=True)
+            self.log_alpha = torch.zeros(1, requires_grad=True, device=ptu.device.type)
             self.alpha_optimizer = optimizer_class(
                 [self.log_alpha],
                 lr=policy_lr,

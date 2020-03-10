@@ -3,11 +3,8 @@
   "log_annotation": "extrapolation_data",
   "n_train_tasks": 0,
   "n_eval_tasks": 4,
-
-
   "algo_params": {
     "dump_eval_paths": true,
-
     "meta_batch": 10,
     "num_initial_steps": 2000,
     "num_steps_prior": 400,

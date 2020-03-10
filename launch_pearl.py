@@ -4,6 +4,8 @@ import json
 import numpy as np
 import click
 import torch
+from learning_to_adapt.envs.ant_env import AntEnv as CrippledAntEnv
+
 from rlkit.envs import ENVS
 from rlkit.envs.wrappers import NormalizedBoxEnv
 from rlkit.torch.sac.policies import TanhGaussianPolicy
@@ -15,7 +17,6 @@ import rlkit.torch.pytorch_util as ptu
 from configs.default import default_pearl_config
 from misc_utils import deep_update_dict
 
-from learning_to_adapt.envs.ant_env import AntEnv as CrippledAntEnv
 
 def experiment(variant):
     # create multi-task environment and sample tasks
@@ -25,7 +26,7 @@ def experiment(variant):
 
     elif env_name in ['ant-crippled']:
         env = NormalizedBoxEnv(CrippledAntEnv())
-        #env = CrippledAntEnv()
+        # env = CrippledAntEnv()
 
     tasks = env.get_all_task_idx()
     obs_dim = int(np.prod(env.observation_space.shape))
@@ -110,13 +111,14 @@ def experiment(variant):
     os.environ['DEBUG'] = str(int(DEBUG))
 
     # run the algorithm
-    #algorithm.train()
-    if variant['algo_params']['exp_mode']== 'TRAIN':
+    # algorithm.train()
+    if variant['algo_params']['exp_mode'] == 'TRAIN':
         algorithm.train()
     else:
         assert variant['algo_params']['exp_mode'] == 'EVAL'
         assert variant['algo_params']['dump_eval_paths'] == True
         algorithm._try_to_eval()
+
 
 @click.command()
 @click.argument('config', default=None)
@@ -134,8 +136,8 @@ def main(config, seed):
     setup_logger(exp_log_name, variant=variant, exp_id=None,
                  base_log_dir=variant['util_params']['base_log_dir'], snapshot_mode='gap',
                  snapshot_gap=10)
-    #variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
-    #variant['path_to_weights']  = "/home/russell/mier_proj/oyster/output/ant-crippled/regular/seed-0/"
+    # variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
+    # variant['path_to_weights']  = "/home/russell/mier_proj/oyster/output/ant-crippled/regular/seed-0/"
     variant['algo_params']['exp_mode'] = 'TRAIN'
     ptu.set_gpu_mode(True)
     experiment(variant)

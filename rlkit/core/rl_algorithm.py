@@ -4,6 +4,7 @@ import time
 
 import gtimer as gt
 import numpy as np
+
 from rlkit.core import logger, eval_util
 from rlkit.data_management.env_replay_buffer import MultiTaskReplayBuffer
 from rlkit.data_management.path_builder import PathBuilder
@@ -262,18 +263,18 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
                 self._n_rollouts_total,
             )
 
-         #   times_itrs = gt.get_times().stamps.itrs
-         #   train_time = times_itrs['train'][-1]
-         #   sample_time = times_itrs['sample'][-1]
-         #   eval_time = times_itrs['eval'][-1] if epoch > 0 else 0
-         #   epoch_time = train_time + sample_time + eval_time
-         #   total_time = gt.get_times().total
+            #   times_itrs = gt.get_times().stamps.itrs
+            #   train_time = times_itrs['train'][-1]
+            #   sample_time = times_itrs['sample'][-1]
+            #   eval_time = times_itrs['eval'][-1] if epoch > 0 else 0
+            #   epoch_time = train_time + sample_time + eval_time
+            #   total_time = gt.get_times().total
 
-         #   logger.record_tabular('Train Time (s)', train_time)
-         #   logger.record_tabular('(Previous) Eval Time (s)', eval_time)
-         #   logger.record_tabular('Sample Time (s)', sample_time)
-         #   logger.record_tabular('Epoch Time (s)', epoch_time)
-         #   logger.record_tabular('Total Train Time (s)', total_time)
+            #   logger.record_tabular('Train Time (s)', train_time)
+            #   logger.record_tabular('(Previous) Eval Time (s)', eval_time)
+            #   logger.record_tabular('Sample Time (s)', sample_time)
+            #   logger.record_tabular('Epoch Time (s)', epoch_time)
+            #   logger.record_tabular('Total Train Time (s)', total_time)
 
             logger.record_tabular("Epoch", epoch)
             logger.dump_tabular(with_prefix=False, with_timestamp=False)
@@ -377,9 +378,9 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
                 sparse_rewards = np.stack(e['sparse_reward'] for e in p['env_infos']).reshape(-1, 1)
                 p['rewards'] = sparse_rewards
 
-        #import ipdb ; ipdb.set_trace()
+        # import ipdb ; ipdb.set_trace()
         if self.dump_eval_paths:
-            logger.save_extra_data({'paths': paths, 'zs': all_zs}, _dir_annotation='inference/task_'+str(idx))
+            logger.save_extra_data({'paths': paths, 'zs': all_zs}, _dir_annotation='inference/task_' + str(idx))
         # goal = self.env._goal
         # for path in paths:
         #     path['goal'] = goal  # goal
@@ -428,7 +429,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             indices = np.random.choice(self.train_tasks, len(self.eval_tasks))
             eval_util.dprint('evaluating on {} train tasks'.format(len(indices)))
 
-        ### eval train tasks with on-policy data to match eval of test tasks
+            ### eval train tasks with on-policy data to match eval of test tasks
             train_final_returns, train_online_returns = self._do_eval(indices, epoch)
             eval_util.dprint('train online returns')
             eval_util.dprint(train_online_returns)
@@ -443,10 +444,10 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         eval_util.dprint(test_online_returns)
 
         avg_test_return = np.mean(test_final_returns)
-        #self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
+        # self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
         self.eval_statistics['AverageReturn_all_test_tasks'] = avg_test_return
         for i, _ret in enumerate(test_final_returns):
-            self.eval_statistics['eval_task'+str(i)+'_return'] = _ret
+            self.eval_statistics['eval_task' + str(i) + '_return'] = _ret
         #        logger.save_extra_data(avg_train_online_return, path='online-train-epoch{}'.format(epoch))
         #        logger.save_extra_data(avg_test_online_return, path='online-test-epoch{}'.format(epoch))
         self.agent.log_diagnostics(self.eval_statistics)

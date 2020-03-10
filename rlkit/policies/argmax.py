@@ -2,6 +2,7 @@
 Torch argmax policy
 """
 import numpy as np
+
 import rlkit.torch.pytorch_util as ptu
 from rlkit.policies.base import SerializablePolicy
 from rlkit.torch.core import PyTorchModule

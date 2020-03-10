@@ -4,6 +4,7 @@ from collections import OrderedDict
 import numpy as np
 from torch import nn as nn
 from torch.autograd import Variable
+
 from rlkit.torch import pytorch_util as ptu
 from rlkit.core.serializable import Serializable
 
@@ -102,6 +103,7 @@ def np_ify(tensor_or_other):
     else:
         return tensor_or_other
 
+
 def _elem_or_tuple_to_variable(elem_or_tuple):
     if isinstance(elem_or_tuple, tuple):
         return tuple(
@@ -109,12 +111,14 @@ def _elem_or_tuple_to_variable(elem_or_tuple):
         )
     return ptu.from_numpy(elem_or_tuple).float()
 
+
 def _filter_batch(np_batch):
     for k, v in np_batch.items():
         if v.dtype == np.bool:
             yield k, v.astype(int)
         else:
             yield k, v
+
 
 def np_to_pytorch_batch(np_batch):
     return {

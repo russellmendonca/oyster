@@ -27,7 +27,7 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
     def __init__(self, task={}, n_tasks=2, randomize_tasks=True):
         self._task = task
         self.tasks = self.sample_tasks(n_tasks)
-        #self.tasks = [{'velocity': velocity} for velocity in np.arange(0.5,4.1, 0.5)]
+        # self.tasks = [{'velocity': velocity} for velocity in np.arange(0.5,4.1, 0.5)]
         self._goal_vel = self.tasks[0].get('velocity', 0.0)
         self._goal = self._goal_vel
         super(HalfCheetahVelEnv, self).__init__()

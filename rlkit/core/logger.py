@@ -17,6 +17,7 @@ import errno
 import numpy as np
 import dateutil.tz
 import torch
+
 from rlkit.core.tabulate import tabulate
 
 
@@ -160,11 +161,11 @@ def pop_tabular_prefix():
     _tabular_prefix_str = ''.join(_tabular_prefixes)
 
 
-def save_extra_data(data, epoch=None, _dir_annotation = 'extra_data'):
+def save_extra_data(data, epoch=None, _dir_annotation='extra_data'):
     """
     :param data: Something pickle'able.
     """
-    target_dir = _snapshot_dir + '/'+ _dir_annotation+ '/'
+    target_dir = _snapshot_dir + '/' + _dir_annotation + '/'
     os.makedirs(target_dir, exist_ok=True)
     if epoch is not None:
         file_name = target_dir + 'epoch_' + str(epoch) + '.pkl'
@@ -173,6 +174,7 @@ def save_extra_data(data, epoch=None, _dir_annotation = 'extra_data'):
 
     with open(file_name, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 def get_table_dict():
     return dict(_tabular)
@@ -266,9 +268,9 @@ def save_itr_params(itr, params_dict):
     if _snapshot_dir:
         if _snapshot_mode == 'all':
             # save for every training iteration
-            _target_dir = osp.join(_snapshot_dir, 'itr_'+str(itr))
+            _target_dir = osp.join(_snapshot_dir, 'itr_' + str(itr))
             os.makedirs(_target_dir, exist_ok=True)
-            file_names = [osp.join(_target_dir, n+'.pth' ) for n in names]
+            file_names = [osp.join(_target_dir, n + '.pth') for n in names]
             save_weights(params, file_names)
         elif _snapshot_mode == 'last':
             # override previous params

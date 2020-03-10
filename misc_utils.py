@@ -24,6 +24,7 @@ def deep_update_dict(fr, to):
             to[k] = v
     return to
 
+
 def set_random_seed(seed):
     np.random.seed(seed)
     tf.random.set_random_seed(seed)
@@ -35,7 +36,7 @@ import csv
 
 
 def direct_logging(data, output_dir):
-    #import ipdb ; ipdb.set_trace()   
+    # import ipdb ; ipdb.set_trace()
     for metric in data:
         metric_dir = output_dir + metric
         if os.path.isdir(metric_dir) != True:
@@ -96,14 +97,15 @@ class TensorBoardLogger(object):
             colorspace=channel,
             encoded_image_string=image_string
         )
+
     def add_name_prefix_to_dict(self, _dict, prefix):
         new_dict = {}
         for key in _dict:
-            new_dict[prefix+key] = _dict[key]
+            new_dict[prefix + key] = _dict[key]
         return new_dict
 
     def log_dict(self, step, data, name_prefix=''):
-        
+
         data = self.add_name_prefix_to_dict(data, name_prefix)
         summary = tf.Summary(
             value=[
@@ -111,8 +113,8 @@ class TensorBoardLogger(object):
                 for name, value in data.items() if value is not None
             ]
         )
-        
-        direct_logging(data, os.path.join(self.output_dir ,'logs/'))
+
+        direct_logging(data, os.path.join(self.output_dir, 'logs/'))
         self.file_writer.add_summary(summary, step)
 
     def flush(self):
