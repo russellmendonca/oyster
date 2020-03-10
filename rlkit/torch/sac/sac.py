@@ -1,5 +1,4 @@
 from collections import OrderedDict
-
 import numpy as np
 import torch
 import torch.optim as optim
@@ -17,7 +16,6 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         eval_tasks,
         latent_dim,
         nets,
-
         policy_lr=1e-3,
         qf_lr=1e-3,
         vf_lr=1e-3,
@@ -31,10 +29,12 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         use_information_bottleneck=True,
         use_next_obs_in_context=False,
         sparse_rewards=False,
-
         soft_target_tau=1e-2,
         plotter=None,
         render_eval_paths=False,
+        target_update_period=1,
+        use_automatic_entropy_tuning=True,
+        target_entropy=None,
         **kwargs
     ):
         super().__init__(
@@ -60,12 +60,26 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         self.l2_reg_criterion = nn.MSELoss()
         self.kl_lambda = kl_lambda
 
+
         self.use_information_bottleneck = use_information_bottleneck
         self.sparse_rewards = sparse_rewards
         self.use_next_obs_in_context = use_next_obs_in_context
 
-        self.qf1, self.qf2, self.vf = nets[1:]
-        self.target_vf = self.vf.copy()
+        self.qf1, self.qf2, self.target_qf1, self.target_qf2 = nets[1:]
+
+        self.target_update_period = target_update_period
+        self.use_automatic_entropy_tuning = use_automatic_entropy_tuning
+        if self.use_automatic_entropy_tuning:
+            if target_entropy:
+                self.target_entropy = target_entropy
+            else:
+                self.target_entropy = -np.prod(self.env.action_space.shape).item()  # heuristic value from Tuomas
+            #self.log_alpha = ptu.zeros( 1, requires_grad=True)
+            self.log_alpha = torch.zeros(1, requires_grad = True, device = ptu.device.type)
+            self.alpha_optimizer = optimizer_class(
+                [self.log_alpha],
+                lr=policy_lr,
+            )
 
         self.policy_optimizer = optimizer_class(
             self.agent.policy.parameters(),
@@ -79,10 +93,10 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
             self.qf2.parameters(),
             lr=qf_lr,
         )
-        self.vf_optimizer = optimizer_class(
-            self.vf.parameters(),
-            lr=vf_lr,
-        )
+        # self.vf_optimizer = optimizer_class(
+        #     self.vf.parameters(),
+        #     lr=vf_lr,
+        # )
         self.context_optimizer = optimizer_class(
             self.agent.context_encoder.parameters(),
             lr=context_lr,
@@ -91,7 +105,7 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
     ###### Torch stuff #####
     @property
     def networks(self):
-        return self.agent.networks + [self.agent] + [self.qf1, self.qf2, self.vf, self.target_vf]
+        return self.agent.networks + [self.agent] + [self.qf1, self.qf2, self.target_qf1, self.target_qf2]
 
     def training_mode(self, mode):
         for net in self.networks:
@@ -177,16 +191,28 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
     def _update_target_network(self):
         ptu.soft_update_from_to(self.vf, self.target_vf, self.soft_target_tau)
 
+    def _agent_act(self, obs, context):
+        policy_outputs, task_z = self.agent(obs, context)
+        new_actions, policy_mean, policy_log_std, log_pi = policy_outputs[:4]
+        return new_actions, log_pi, task_z
+
     def _take_step(self, indices, context):
-
         num_tasks = len(indices)
-
         # data is (task, batch, feat)
         obs, actions, rewards, next_obs, terms = self.sample_sac(indices)
 
-        # run inference in networks
-        policy_outputs, task_z = self.agent(obs, context)
-        new_actions, policy_mean, policy_log_std, log_pi = policy_outputs[:4]
+        new_obs_actions, log_pi, task_z = self._agent_act(obs, context)
+        new_next_actions, new_log_pi, _ = self._agent_act(next_obs, context)
+
+        if self.use_automatic_entropy_tuning:
+            alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
+            alpha = self.log_alpha.exp()
+        else:
+            alpha_loss = 0
+            alpha = 1
 
         # flattens out the task dimension
         t, b, _ = obs.size()
@@ -194,68 +220,52 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         actions = actions.view(t * b, -1)
         next_obs = next_obs.view(t * b, -1)
 
-        # Q and V networks
-        # encoder will only get gradients from Q nets
         q1_pred = self.qf1(obs, actions, task_z)
         q2_pred = self.qf2(obs, actions, task_z)
-        v_pred = self.vf(obs, task_z.detach())
-        # get targets for use in V and Q updates
-        with torch.no_grad():
-            target_v_values = self.target_vf(next_obs, task_z)
 
-        # KL constraint on z if probabilistic
+        with torch.no_grad():
+            target_q_values = torch.min(
+                self.target_qf1(next_obs, new_next_actions, task_z.detach()),
+                self.target_qf2(next_obs, new_next_actions, task_z.detach()),
+            ) - alpha * new_log_pi
+
         self.context_optimizer.zero_grad()
         if self.use_information_bottleneck:
             kl_div = self.agent.compute_kl_div()
             kl_loss = self.kl_lambda * kl_div
             kl_loss.backward(retain_graph=True)
 
-        # qf and encoder update (note encoder does not get grads from policy or vf)
         self.qf1_optimizer.zero_grad()
         self.qf2_optimizer.zero_grad()
         rewards_flat = rewards.view(self.batch_size * num_tasks, -1)
         # scale rewards for Bellman update
         rewards_flat = rewards_flat * self.reward_scale
         terms_flat = terms.view(self.batch_size * num_tasks, -1)
-        q_target = rewards_flat + (1. - terms_flat) * self.discount * target_v_values
+        q_target = rewards_flat + (1. - terms_flat) * self.discount * target_q_values
         qf_loss = torch.mean((q1_pred - q_target) ** 2) + torch.mean((q2_pred - q_target) ** 2)
         qf_loss.backward()
         self.qf1_optimizer.step()
         self.qf2_optimizer.step()
         self.context_optimizer.step()
 
-        # compute min Q on the new actions
-        min_q_new_actions = self._min_q(obs, new_actions, task_z)
-
-        # vf update
-        v_target = min_q_new_actions - log_pi
-        vf_loss = self.vf_criterion(v_pred, v_target.detach())
-        self.vf_optimizer.zero_grad()
-        vf_loss.backward()
-        self.vf_optimizer.step()
-        self._update_target_network()
-
-        # policy update
-        # n.b. policy update includes dQ/da
-        log_policy_target = min_q_new_actions
-
-        policy_loss = (
-            log_pi - log_policy_target
-        ).mean()
-
-        mean_reg_loss = self.policy_mean_reg_weight * (policy_mean ** 2).mean()
-        std_reg_loss = self.policy_std_reg_weight * (policy_log_std ** 2).mean()
-        pre_tanh_value = policy_outputs[-1]
-        pre_activation_reg_loss = self.policy_pre_activation_weight * (
-            (pre_tanh_value ** 2).sum(dim=1).mean()
+        # Policy Optimization
+        q_new_actions = torch.min(
+            self.qf1(obs, new_obs_actions, task_z.detach()),
+            self.qf2(obs, new_obs_actions, task_z.detach()),
         )
-        policy_reg_loss = mean_reg_loss + std_reg_loss + pre_activation_reg_loss
-        policy_loss = policy_loss + policy_reg_loss
-
+        policy_loss = (alpha * log_pi - q_new_actions).mean()
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
         self.policy_optimizer.step()
 
+        # Soft Updates
+        if self._n_train_steps_total % self.target_update_period == 0:
+            ptu.soft_update_from_to(
+                self.qf1, self.target_qf1, self.soft_target_tau
+            )
+            ptu.soft_update_from_to(
+                self.qf2, self.target_qf2, self.soft_target_tau
+            )
         # save some statistics for eval
         if self.eval_statistics is None:
             # eval should set this to None.
@@ -270,7 +280,6 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
                 self.eval_statistics['KL Loss'] = ptu.get_numpy(kl_loss)
 
             self.eval_statistics['QF Loss'] = np.mean(ptu.get_numpy(qf_loss))
-            self.eval_statistics['VF Loss'] = np.mean(ptu.get_numpy(vf_loss))
             self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(
                 policy_loss
             ))
@@ -278,21 +287,10 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
                 'Q Predictions',
                 ptu.get_numpy(q1_pred),
             ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'V Predictions',
-                ptu.get_numpy(v_pred),
-            ))
+
             self.eval_statistics.update(create_stats_ordered_dict(
                 'Log Pis',
                 ptu.get_numpy(log_pi),
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'Policy mu',
-                ptu.get_numpy(policy_mean),
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'Policy log std',
-                ptu.get_numpy(policy_log_std),
             ))
 
     def get_epoch_snapshot(self, epoch):
@@ -301,8 +299,8 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
             qf1=self.qf1.state_dict(),
             qf2=self.qf2.state_dict(),
             policy=self.agent.policy.state_dict(),
-            vf=self.vf.state_dict(),
-            target_vf=self.target_vf.state_dict(),
+            target_qf1=self.target_qf1.state_dict(),
+            target_qf2=self.target_qf2.state_dict(),
             context_encoder=self.agent.context_encoder.state_dict(),
         )
         return snapshot

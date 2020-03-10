@@ -39,7 +39,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         update_post_train=1,
         eval_deterministic=True,
         render=False,
-        save_extra_data_interval=5,
+        save_extra_data_interval=20,
         save_replay_buffer=True,
         save_algorithm=False,
         save_environment=False,
@@ -356,6 +356,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
         self.agent.clear_z()
         paths = []
+        all_zs = []
         num_transitions = 0
         num_trajs = 0
         while num_transitions < self.num_steps_per_eval:
@@ -367,19 +368,24 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             num_trajs += 1
             if num_trajs >= self.num_exp_traj_eval:
                 self.agent.infer_posterior(self.agent.context)
+                all_zs.append({'z_mean': self.agent.z_means.detach().cpu().numpy(),
+                               'z_vars': self.agent.z_vars.detach().cpu().numpy(),
+                               'z_sample': self.agent.z.detach().cpu().numpy()})
 
         if self.sparse_rewards:
             for p in paths:
                 sparse_rewards = np.stack(e['sparse_reward'] for e in p['env_infos']).reshape(-1, 1)
                 p['rewards'] = sparse_rewards
 
-        goal = self.env._goal
-        for path in paths:
-            path['goal'] = goal  # goal
-
-        # save the paths for visualization, only useful for point mass
+        #import ipdb ; ipdb.set_trace()
         if self.dump_eval_paths:
-            logger.save_extra_data(paths, path='eval_trajectories/task{}-epoch{}-run{}'.format(idx, epoch, run))
+            logger.save_extra_data({'paths': paths, 'zs': all_zs}, _dir_annotation='inference/task_'+str(idx))
+        # goal = self.env._goal
+        # for path in paths:
+        #     path['goal'] = goal  # goal
+        # save the paths for visualization, only useful for point mass
+        # if self.dump_eval_paths:
+        #     logger.save_extra_data(paths, path='eval_trajectories/task{}-epoch{}-run{}'.format(idx, epoch, run))
 
         return paths
 
@@ -406,15 +412,15 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             self.eval_statistics = OrderedDict()
 
         ### sample trajectories from prior for debugging / visualization
-        if self.dump_eval_paths:
-            # 100 arbitrarily chosen for visualizations of point_robot trajectories
-            # just want stochasticity of z, not the policy
-            self.agent.clear_z()
-            prior_paths, _ = self.sampler.obtain_samples(deterministic=self.eval_deterministic,
-                                                         max_samples=self.max_path_length * 20,
-                                                         accum_context=False,
-                                                         resample=1)
-            logger.save_extra_data(prior_paths, path='eval_trajectories/prior-epoch{}'.format(epoch))
+        # if self.dump_eval_paths:
+        #     # 100 arbitrarily chosen for visualizations of point_robot trajectories
+        #     # just want stochasticity of z, not the policy
+        #     self.agent.clear_z()
+        #     prior_paths, _ = self.sampler.obtain_samples(deterministic=self.eval_deterministic,
+        #                                                  max_samples=self.max_path_length * 20,
+        #                                                  accum_context=False,
+        #                                                  resample=1)
+        #     logger.save_extra_data(prior_paths, path='eval_trajectories/prior-epoch{}'.format(epoch))
 
         ### train tasks
         # eval on a subset of train tasks for speed
@@ -435,7 +441,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         test_final_returns, test_online_returns = self._do_eval(self.eval_tasks, epoch)
         eval_util.dprint('test online returns')
         eval_util.dprint(test_online_returns)
-        
+
         avg_test_return = np.mean(test_final_returns)
         #self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
         self.eval_statistics['AverageReturn_all_test_tasks'] = avg_test_return

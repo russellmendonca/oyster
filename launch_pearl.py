@@ -15,9 +15,18 @@ import rlkit.torch.pytorch_util as ptu
 from configs.default import default_pearl_config
 from misc_utils import deep_update_dict
 
+from learning_to_adapt.envs.ant_env import AntEnv as CrippledAntEnv
+
 def experiment(variant):
     # create multi-task environment and sample tasks
-    env = NormalizedBoxEnv(ENVS[variant['env_name']](**variant['env_params']))
+    env_name = variant['env_name']
+    if env_name in ['cheetah-vel', 'cheetah-mod-control']:
+        env = NormalizedBoxEnv(ENVS[variant['env_name']](**variant['env_params']))
+
+    elif env_name in ['ant-crippled']:
+        env = NormalizedBoxEnv(CrippledAntEnv())
+        #env = CrippledAntEnv()
+
     tasks = env.get_all_task_idx()
     obs_dim = int(np.prod(env.observation_space.shape))
     action_dim = int(np.prod(env.action_space.shape))
@@ -47,9 +56,14 @@ def experiment(variant):
         input_size=obs_dim + action_dim + latent_dim,
         output_size=1,
     )
-    vf = FlattenMlp(
+    target_qf1 = FlattenMlp(
         hidden_sizes=[net_size, net_size, net_size],
-        input_size=obs_dim + latent_dim,
+        input_size=obs_dim + action_dim + latent_dim,
+        output_size=1,
+    )
+    target_qf2 = FlattenMlp(
+        hidden_sizes=[net_size, net_size, net_size],
+        input_size=obs_dim + action_dim + latent_dim,
         output_size=1,
     )
     policy = TanhGaussianPolicy(
@@ -68,24 +82,26 @@ def experiment(variant):
         env=env,
         train_tasks=list(tasks[:variant['n_train_tasks']]),
         eval_tasks=list(tasks[-variant['n_eval_tasks']:]),
-        nets=[agent, qf1, qf2, vf],
+        nets=[agent, qf1, qf2, target_qf1, target_qf2],
         latent_dim=latent_dim,
         **variant['algo_params']
     )
-
     # optionally load pre-trained weights
     if variant['path_to_weights'] is not None:
         path = variant['path_to_weights']
         context_encoder.load_state_dict(torch.load(os.path.join(path, 'context_encoder.pth')))
         qf1.load_state_dict(torch.load(os.path.join(path, 'qf1.pth')))
         qf2.load_state_dict(torch.load(os.path.join(path, 'qf2.pth')))
-        vf.load_state_dict(torch.load(os.path.join(path, 'vf.pth')))
+
+        target_qf1.load_state_dict(torch.load(os.path.join(path, 'target_qf1.pth')))
+        target_qf2.load_state_dict(torch.load(os.path.join(path, 'target_qf2.pth')))
+
         # TODO hacky, revisit after model refactor
-        algorithm.networks[-2].load_state_dict(torch.load(os.path.join(path, 'target_vf.pth')))
+        # load_state_dict(torch.load(os.path.join(path, 'target_vf.pth')))
         policy.load_state_dict(torch.load(os.path.join(path, 'policy.pth')))
 
     # optional GPU mode
-    ptu.set_gpu_mode(variant['util_params']['use_gpu'], variant['util_params']['gpu_id'])
+
     if ptu.gpu_enabled():
         algorithm.to()
 
@@ -99,6 +115,7 @@ def experiment(variant):
         algorithm.train()
     else:
         assert variant['algo_params']['exp_mode'] == 'EVAL'
+        assert variant['algo_params']['dump_eval_paths'] == True
         algorithm._try_to_eval()
 
 @click.command()
@@ -114,11 +131,13 @@ def main(config, seed):
         variant = deep_update_dict(exp_params, variant)
     variant['util_params']['gpu_id'] = gpu_id
     exp_log_name = variant['env_name'] + '/' + variant['log_annotation'] + '/seed_' + str(seed)
-    setup_logger(exp_log_name, variant=variant, exp_id=None, base_log_dir=variant['util_params']['base_log_dir'])
+    setup_logger(exp_log_name, variant=variant, exp_id=None,
+                 base_log_dir=variant['util_params']['base_log_dir'], snapshot_mode='gap',
+                 snapshot_gap=10)
     #variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
+    #variant['path_to_weights']  = "/home/russell/mier_proj/oyster/output/ant-crippled/regular/seed-0/"
     variant['algo_params']['exp_mode'] = 'TRAIN'
-    #variant['n_train_tasks'] = 0
-    #variant['n_eval_tasks']=10
+    ptu.set_gpu_mode(True)
     experiment(variant)
 
 
