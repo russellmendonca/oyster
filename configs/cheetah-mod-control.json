@@ -1,10 +1,10 @@
 {
   "env_name": "cheetah-mod-control",
-  "log_annotation": "negated-joints",
+  "log_annotation": "negated-joints-test-tasks-sanity",
   "n_train_tasks": 10,
-  "n_eval_tasks": 10,
+  "n_eval_tasks": 0,
   "env_params": {
-    "n_tasks": 20,
+    "n_tasks": 10,
     "randomize_tasks": false
   },
   "algo_params": {
@@ -16,6 +16,7 @@
     "num_steps_per_eval": 600,
     "num_exp_traj_eval": 2,
     "embedding_batch_size": 100,
-    "embedding_mini_batch_size": 100
+    "embedding_mini_batch_size": 100,
+    "dump_eval_paths": true
   }
 }

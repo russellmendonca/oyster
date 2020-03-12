@@ -6,10 +6,10 @@ from rlkit.data_management.simple_replay_buffer import SimpleReplayBuffer
 
 class MultiTaskReplayBuffer(object):
     def __init__(
-        self,
-        max_replay_buffer_size,
-        env,
-        tasks,
+            self,
+            max_replay_buffer_size,
+            env,
+            tasks,
     ):
         """
         :param max_replay_buffer_size:

@@ -13,40 +13,41 @@ from rlkit.samplers.in_place import InPlacePathSampler
 
 class MetaRLAlgorithm(metaclass=abc.ABCMeta):
     def __init__(
-        self,
-        env,
-        agent,
-        train_tasks,
-        eval_tasks,
-        exp_mode='TRAIN',
-        meta_batch=64,
-        num_iterations=100,
-        num_train_steps_per_itr=1000,
-        num_initial_steps=100,
-        num_tasks_sample=100,
-        num_steps_prior=100,
-        num_steps_posterior=100,
-        num_extra_rl_steps_posterior=100,
-        num_evals=10,
-        num_steps_per_eval=1000,
-        batch_size=1024,
-        embedding_batch_size=1024,
-        embedding_mini_batch_size=1024,
-        max_path_length=1000,
-        discount=0.99,
-        replay_buffer_size=1000000,
-        reward_scale=1,
-        num_exp_traj_eval=1,
-        update_post_train=1,
-        eval_deterministic=True,
-        render=False,
-        save_extra_data_interval=20,
-        save_replay_buffer=True,
-        save_algorithm=False,
-        save_environment=False,
-        render_eval_paths=False,
-        dump_eval_paths=False,
-        plotter=None,
+            self,
+            env,
+            agent,
+            train_tasks,
+            eval_tasks,
+            exp_mode='TRAIN',
+            meta_batch=64,
+            num_iterations=100,
+            num_train_steps_per_itr=1000,
+            num_initial_steps=100,
+            num_tasks_sample=100,
+            num_steps_prior=100,
+            num_steps_posterior=100,
+            num_extra_rl_steps_posterior=100,
+            num_evals=10,
+            num_steps_per_eval=1000,
+            batch_size=1024,
+            embedding_batch_size=1024,
+            embedding_mini_batch_size=1024,
+            max_path_length=1000,
+            discount=0.99,
+            replay_buffer_size=1000000,
+            reward_scale=1,
+            num_exp_traj_eval=1,
+            update_post_train=1,
+            eval_deterministic=True,
+            render=False,
+            save_extra_data_interval=20,
+            save_replay_buffer=True,
+            save_algorithm=False,
+            save_environment=False,
+            render_eval_paths=False,
+            dump_eval_paths=False,
+            plotter=None,
+            eval_train_tasks=False
     ):
         """
         :param env: training env
@@ -71,6 +72,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self.num_steps_posterior = num_steps_posterior
         self.num_extra_rl_steps_posterior = num_extra_rl_steps_posterior
         self.num_evals = num_evals
+        self.eval_train_tasks = eval_train_tasks
         self.num_steps_per_eval = num_steps_per_eval
         self.batch_size = batch_size
         self.embedding_batch_size = embedding_batch_size
@@ -153,8 +155,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
         # at each iteration, we first collect data from tasks, perform meta-updates, then try to evaluate
         for it_ in gt.timed_for(
-            range(self.num_iterations),
-            save_itrs=True,
+                range(self.num_iterations),
+                save_itrs=True,
         ):
             self._start_epoch(it_)
             self.training_mode(True)
@@ -425,7 +427,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
         ### train tasks
         # eval on a subset of train tasks for speed
-        if self.exp_mode == 'TRAIN':
+        if self.eval_train_tasks:
             indices = np.random.choice(self.train_tasks, len(self.eval_tasks))
             eval_util.dprint('evaluating on {} train tasks'.format(len(indices)))
 

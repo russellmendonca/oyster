@@ -24,6 +24,7 @@ default_pearl_config = dict(
         num_train_steps_per_itr=2000,  # number of meta-gradient steps taken per iteration
         num_evals=2,  # number of independent evals
         num_steps_per_eval=600,  # nuumber of transitions to eval on
+        eval_train_tasks=False,
         batch_size=256,  # number of transitions in the RL batch
         embedding_batch_size=64,  # number of transitions in the context batch
         embedding_mini_batch_size=64,
@@ -47,7 +48,7 @@ default_pearl_config = dict(
         dump_eval_paths=False,  # whether to save evaluation trajectories
     ),
     util_params=dict(
-        base_log_dir='output',
+        base_log_dir='/nfs/kun1/users/russell/pearl_data',
         use_gpu=True,
         gpu_id=0,
         debug=False,  # debugging triggers printing and writes logs to debug directory

@@ -31,14 +31,14 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
     """
 
     def __init__(
-        self,
-        hidden_sizes,
-        obs_dim,
-        latent_dim,
-        action_dim,
-        std=None,
-        init_w=1e-3,
-        **kwargs
+            self,
+            hidden_sizes,
+            obs_dim,
+            latent_dim,
+            action_dim,
+            std=None,
+            init_w=1e-3,
+            **kwargs
     ):
         self.save_init_params(locals())
         super().__init__(
@@ -72,11 +72,11 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
         return np_ify(outputs)
 
     def forward(
-        self,
-        obs,
-        reparameterize=False,
-        deterministic=False,
-        return_log_prob=False,
+            self,
+            obs,
+            reparameterize=False,
+            deterministic=False,
+            return_log_prob=False,
     ):
         """
         :param obs: Observation

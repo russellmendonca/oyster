@@ -133,12 +133,12 @@ class TanhNormal(Distribution):
 
     def rsample(self, return_pretanh_value=False):
         z = (
-            self.normal_mean +
-            self.normal_std *
-            Variable(Normal(
-                ptu.zeros(self.normal_mean.size()),
-                ptu.ones(self.normal_std.size())
-            ).sample())
+                self.normal_mean +
+                self.normal_std *
+                Variable(Normal(
+                    ptu.zeros(self.normal_mean.size()),
+                    ptu.ones(self.normal_std.size())
+                ).sample())
         )
         # z.requires_grad_()
         if return_pretanh_value:

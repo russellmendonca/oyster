@@ -79,10 +79,11 @@ def experiment(variant):
         policy,
         **variant['algo_params']
     )
+
     algorithm = PEARLSoftActorCritic(
         env=env,
         train_tasks=list(tasks[:variant['n_train_tasks']]),
-        eval_tasks=list(tasks[-variant['n_eval_tasks']:]),
+        eval_tasks=list(tasks[variant['n_train_tasks']:]),
         nets=[agent, qf1, qf2, target_qf1, target_qf2],
         latent_dim=latent_dim,
         **variant['algo_params']
@@ -111,7 +112,7 @@ def experiment(variant):
     os.environ['DEBUG'] = str(int(DEBUG))
 
     # run the algorithm
-    # algorithm.train()
+
     if variant['algo_params']['exp_mode'] == 'TRAIN':
         algorithm.train()
     else:
@@ -138,6 +139,7 @@ def main(config, seed):
                  snapshot_gap=10)
     # variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
     # variant['path_to_weights']  = "/home/russell/mier_proj/oyster/output/ant-crippled/regular/seed-0/"
+    # variant['path_to_weights'] = "/home/russell/mier_proj/oyster/output/cheetah-mod-control/negated-joints/seed-0/itr_240/"
     variant['algo_params']['exp_mode'] = 'TRAIN'
     ptu.set_gpu_mode(True)
     experiment(variant)
