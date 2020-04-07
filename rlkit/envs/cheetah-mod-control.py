@@ -37,6 +37,7 @@ class HalfCheetahModControlEnv(HalfCheetahEnv):
             self.tasks = gen_neg_tasks()
             self.mask = self.tasks[0].get('mask')
 
+
         assert n_tasks == len(self.tasks)
         assert randomize_tasks == False
 

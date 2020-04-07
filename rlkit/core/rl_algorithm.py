@@ -1,7 +1,7 @@
 import abc
 from collections import OrderedDict
 import time
-
+import pickle
 import gtimer as gt
 import numpy as np
 
@@ -10,6 +10,8 @@ from rlkit.data_management.env_replay_buffer import MultiTaskReplayBuffer
 from rlkit.data_management.path_builder import PathBuilder
 from rlkit.samplers.in_place import InPlacePathSampler
 
+from rlkit.samplers.simple_util import simple_rollout
+from rlkit.torch.sac.policies import MakeDeterministic
 
 class MetaRLAlgorithm(metaclass=abc.ABCMeta):
     def __init__(
@@ -47,7 +49,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             render_eval_paths=False,
             dump_eval_paths=False,
             plotter=None,
-            eval_train_tasks=False
+            eval_train_tasks=False,
+            saved_latent_dir=None
     ):
         """
         :param env: training env
@@ -89,7 +92,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self.save_replay_buffer = save_replay_buffer
         self.save_algorithm = save_algorithm
         self.save_environment = save_environment
-
+        self.saved_latent_dir = saved_latent_dir
         self.eval_statistics = None
         self.render_eval_paths = render_eval_paths
         self.dump_eval_paths = dump_eval_paths
@@ -353,6 +356,19 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             data_to_save['algorithm'] = self
         return data_to_save
 
+
+    def eval_with_loaded_latent(self):
+
+        for idx in range(20):
+            print('task ', str(idx))
+            self.env.reset_task(idx)
+            latent_file = self.saved_latent_dir +'task_'+str(idx)+'/data.pkl'
+            latent = pickle.load(open(latent_file, 'rb'))['zs'][-2]['z_sample'].reshape(-1)
+            for _ in range(10):
+                path = simple_rollout(latent, self.env, self.agent.policy, deterministic = True, max_path_length=self.max_path_length)
+        
+                print('return ', sum(path['rewards']))
+
     def collect_paths(self, idx, epoch, run):
         self.task_idx = idx
         self.env.reset_task(idx)
@@ -380,7 +396,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
                 sparse_rewards = np.stack(e['sparse_reward'] for e in p['env_infos']).reshape(-1, 1)
                 p['rewards'] = sparse_rewards
 
-        # import ipdb ; ipdb.set_trace()
+        #import ipdb ; ipdb.set_trace()
+
         if self.dump_eval_paths:
             logger.save_extra_data({'paths': paths, 'zs': all_zs}, _dir_annotation='inference/task_' + str(idx))
         # goal = self.env._goal
@@ -438,7 +455,9 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
             avg_train_return = np.mean(train_final_returns)
             self.eval_statistics['AverageReturn_all_train_tasks'] = avg_train_return
-
+            for i, _ret in enumerate(train_final_returns):
+                self.eval_statistics['train_task' + str(i) + '_return'] = _ret
+ 
         ### test tasks
         eval_util.dprint('evaluating on {} test tasks'.format(len(self.eval_tasks)))
         test_final_returns, test_online_returns = self._do_eval(self.eval_tasks, epoch)
@@ -446,7 +465,6 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         eval_util.dprint(test_online_returns)
 
         avg_test_return = np.mean(test_final_returns)
-        # self.eval_statistics['AverageTrainReturn_all_train_tasks'] = train_returns
         self.eval_statistics['AverageReturn_all_test_tasks'] = avg_test_return
         for i, _ret in enumerate(test_final_returns):
             self.eval_statistics['eval_task' + str(i) + '_return'] = _ret

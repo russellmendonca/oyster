@@ -101,7 +101,7 @@ def experiment(variant):
         # TODO hacky, revisit after model refactor
         # load_state_dict(torch.load(os.path.join(path, 'target_vf.pth')))
         policy.load_state_dict(torch.load(os.path.join(path, 'policy.pth')))
-
+    #import ipdb ; ipdb.set_trace()
     # optional GPU mode
 
     if ptu.gpu_enabled():
@@ -115,10 +115,11 @@ def experiment(variant):
 
     if variant['algo_params']['exp_mode'] == 'TRAIN':
         algorithm.train()
-    else:
-        assert variant['algo_params']['exp_mode'] == 'EVAL'
+    elif variant['algo_params']['exp_mode'] == 'EVAL':
         assert variant['algo_params']['dump_eval_paths'] == True
         algorithm._try_to_eval()
+    else:
+        algorithm.eval_with_loaded_latent()
 
 
 @click.command()
@@ -139,8 +140,10 @@ def main(config, seed):
                  snapshot_gap=10)
     # variant['path_to_weights'] = '/home/russell/oyster/output/pearl/cheetah-vel/vel-0-1/seed-0/'
     # variant['path_to_weights']  = "/home/russell/mier_proj/oyster/output/ant-crippled/regular/seed-0/"
-    # variant['path_to_weights'] = "/home/russell/mier_proj/oyster/output/cheetah-mod-control/negated-joints/seed-0/itr_240/"
-    variant['algo_params']['exp_mode'] = 'TRAIN'
+    #variant['path_to_weights'] = "/home/russell/mier_proj/oyster/output/cheetah-mod-control/negated-joints/seed-0/itr_240/"
+    #variant['algo_params']['saved_latent_dir']="/nfs/kun1/users/russell/pearl_data/cheetah-mod-control/negated-joints/seed-0/inference/"
+    #variant['algo_params']['exp_mode'] = 'debug'
+    
     ptu.set_gpu_mode(True)
     experiment(variant)
 
