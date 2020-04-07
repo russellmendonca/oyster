@@ -4,7 +4,7 @@ import json
 import numpy as np
 import click
 import torch
-from learning_to_adapt.envs.ant_env import AntEnv as CrippledAntEnv
+#from learning_to_adapt.envs.ant_env import AntEnv as CrippledAntEnv
 
 from rlkit.envs import ENVS
 from rlkit.envs.wrappers import NormalizedBoxEnv

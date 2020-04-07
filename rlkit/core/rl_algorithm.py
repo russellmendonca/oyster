@@ -352,6 +352,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             data_to_save['env'] = self.training_env
         if self.save_replay_buffer:
             data_to_save['replay_buffer'] = self.replay_buffer.return_all_data()
+            data_to_save['enc_replay_buffer'] = self.enc_replay_buffer.return_all_data()
         if self.save_algorithm:
             data_to_save['algorithm'] = self
         return data_to_save
