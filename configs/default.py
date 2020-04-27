@@ -7,10 +7,7 @@ default_pearl_config = dict(
     latent_size=5,  # dimension of the latent context vector
     net_size=300,  # number of units per FC layer in each network
     path_to_weights=None,  # path to pre-trained weights to load into networks
-    env_params=dict(
-        n_tasks=2,  # number of distinct tasks in this domain, shoudl equal sum of train and eval tasks
-        randomize_tasks=True,  # shuffle the tasks after creating them
-    ),
+    env_params=dict(),
     algo_params=dict(
         exp_mode='TRAIN',  # other mode is eval
         meta_batch=16,  # number of tasks to average the gradient across
@@ -54,39 +51,4 @@ default_pearl_config = dict(
         debug=False,  # debugging triggers printing and writes logs to debug directory
         docker=False,  # TODO docker is not yet supported
     )
-)
-
-default_mier_config = dict(
-    env_name='cheetah-dir',
-    n_train_tasks=2,
-    env_params=dict(
-        n_tasks=2,  # number of distinct tasks in this domain, shoudl equal sum of train and eval tasks
-        randomize_tasks=True,  # shuffle the tasks after creating them
-    ),
-    log_dir='',
-    data_load_path='',
-    num_epochs=500,
-    batch_size=256,
-    load_data_interval=10,
-    num_training_steps_per_epoch=500,
-    model_hyperparams=dict(
-        name='BNN',
-        load_saved_model_path=None,
-        num_nets=1,
-        num_elites=1,
-        context_dim=5,
-        fixed_preupdate_context=True,
-        ada_state_dynamics_pred=True,
-        ada_rew_pred=True,
-        reward_prediction_weight=1,
-
-        hidden_dim=200,
-        meta_batch_size=10,
-        fast_adapt_steps=2,
-        fast_adapt_lr=0.1,
-        clip_val_inner_grad=10,
-        clip_val_outer_grad=10,
-        reg_weight=1,
-    ),
-    algo_params=dict()
 )

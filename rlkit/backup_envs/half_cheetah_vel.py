@@ -1,6 +1,8 @@
 import numpy as np
+
 from . import register_env
 from .half_cheetah import HalfCheetahEnv
+
 
 @register_env('cheetah-vel')
 class HalfCheetahVelEnv(HalfCheetahEnv):
@@ -22,11 +24,10 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
         (https://homes.cs.washington.edu/~todorov/papers/TodorovIROS12.pdf)
     """
 
-    def __init__(self, n_tasks, restricted_train_set=False):
-
-        self.restricted_train_set = restricted_train_set
+    def __init__(self, task={}, n_tasks=2, randomize_tasks=True):
+        self._task = task
         self.tasks = self.sample_tasks(n_tasks)
-        self._task = self.tasks[0]
+        # self.tasks = [{'velocity': velocity} for velocity in np.arange(0.5,4.1, 0.5)]
         self._goal_vel = self.tasks[0].get('velocity', 0.0)
         self._goal = self._goal_vel
         super(HalfCheetahVelEnv, self).__init__()
@@ -49,8 +50,7 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
 
     def sample_tasks(self, num_tasks):
         np.random.seed(1337)
-        max_vel = 1.0 if self.restricted_train_set else 3.0
-        velocities = np.random.uniform(0.0, max_vel, size=(num_tasks,))
+        velocities = np.random.uniform(0.0, 1.0, size=(num_tasks,))
         tasks = [{'velocity': velocity} for velocity in velocities]
         return tasks
 

@@ -5,9 +5,8 @@ from . import register_env
 
 @register_env('walker-rand-params')
 class WalkerRandParamsWrappedEnv(Walker2DRandParamsEnv):
-    def __init__(self, n_tasks=2, restricted_train_set=False):
-        log_scale_limit = 1.0 if restricted_train_set else 3.0
-        super(WalkerRandParamsWrappedEnv, self).__init__(log_scale_limit = log_scale_limit)
+    def __init__(self, n_tasks=2, randomize_tasks=True):
+        super(WalkerRandParamsWrappedEnv, self).__init__()
         self.tasks = self.sample_tasks(n_tasks)
         self.reset_task(0)
 

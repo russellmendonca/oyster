@@ -1,7 +1,7 @@
 {
-  "env_name": "ant-crippled",
-  "n_train_tasks": 3,
-  "n_eval_tasks": 1,
+  "env_name": "ant-wind",
+  "n_train_tasks": 100,
+  "n_eval_tasks": 20,
   "algo_params": {
     "meta_batch": 10,
     "num_initial_steps": 2000,
@@ -13,7 +13,6 @@
     "num_steps_per_eval": 600,
     "num_exp_traj_eval": 2,
     "embedding_batch_size": 256,
-    "embedding_mini_batch_size": 256,
-    "eval_train_tasks": true
+    "embedding_mini_batch_size": 256
   }
 }

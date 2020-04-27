@@ -1,27 +1,25 @@
 import numpy as np
-from .mujoco_env import MujocoEnv
 
-class AntEnv(MujocoEnv):
-    def __init__(self, use_low_gear_ratio=False):
-        # self.init_serialization(locals())
-        if use_low_gear_ratio:
-            xml_path = 'low_gear_ratio_ant.xml'
-        else:
-            xml_path = 'ant.xml'
-        super().__init__(
-            xml_path,
-            frame_skip=5,
-            automatically_set_obs_and_action_space=True,
-        )
+from rlkit.envs.ant_multitask_base import MultitaskAntEnv
+from . import register_env
 
-   
+
+@register_env('ant-dir')
+class AntDirEnv(MultitaskAntEnv):
+
+    def __init__(self, task={}, n_tasks=2, forward_backward=False, randomize_tasks=True, **kwargs):
+        self.forward_backward = forward_backward
+        super(AntDirEnv, self).__init__(task, n_tasks, **kwargs)
+
     def step(self, action):
         torso_xyz_before = np.array(self.get_body_com("torso"))
+
+        direct = (np.cos(self._goal), np.sin(self._goal))
 
         self.do_simulation(action, self.frame_skip)
         torso_xyz_after = np.array(self.get_body_com("torso"))
         torso_velocity = torso_xyz_after - torso_xyz_before
-        forward_reward = torso_velocity[0] / self.dt
+        forward_reward = np.dot((torso_velocity[:2] / self.dt), direct)
 
         ctrl_cost = .5 * np.square(action).sum()
         contact_cost = 0.5 * 1e-3 * np.sum(
@@ -41,13 +39,11 @@ class AntEnv(MujocoEnv):
             torso_velocity=torso_velocity,
         )
 
-    def _get_obs(self):
-        # this is gym ant obs, should use rllab?
-        # if position is needed, override this in subclasses
-        return np.concatenate([
-            self.sim.data.qpos.flat[2:],
-            self.sim.data.qvel.flat,
-        ])
-
-    def viewer_setup(self):
-        self.viewer.cam.distance = self.model.stat.extent * 0.5
+    def sample_tasks(self, num_tasks):
+        if self.forward_backward:
+            assert num_tasks == 2
+            velocities = np.array([0., np.pi])
+        else:
+            velocities = np.random.uniform(0., 2.0 * np.pi, size=(num_tasks,))
+        tasks = [{'goal': velocity} for velocity in velocities]
+        return tasks

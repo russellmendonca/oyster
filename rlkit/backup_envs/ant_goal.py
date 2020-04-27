@@ -1,13 +1,14 @@
 import numpy as np
-from .ant_multitask_base import MultitaskAntEnv
+
+from rlkit.envs.ant_multitask_base import MultitaskAntEnv
 from . import register_env
+
 
 # Copy task structure from https://github.com/jonasrothfuss/ProMP/blob/master/meta_policy_search/envs/mujoco_envs/ant_rand_goal.py
 @register_env('ant-goal')
 class AntGoalEnv(MultitaskAntEnv):
-    def __init__(self, n_tasks=2, restricted_train_set=False):
-        self.restricted_train_set = restricted_train_set
-        super(AntGoalEnv, self).__init__({}, n_tasks)
+    def __init__(self, task={}, n_tasks=2, randomize_tasks=True, **kwargs):
+        super(AntGoalEnv, self).__init__(task, n_tasks, **kwargs)
 
     def step(self, action):
         self.do_simulation(action, self.frame_skip)
@@ -31,8 +32,7 @@ class AntGoalEnv(MultitaskAntEnv):
         )
 
     def sample_tasks(self, num_tasks):
-        a = np.random.random(num_tasks) * 2 * np.pi if not(self.restricted_train_set) \
-            else np.random.random(num_tasks) * np.pi
+        a = np.random.random(num_tasks) * 2 * np.pi
         r = 3 * np.random.random(num_tasks) ** 0.5
         goals = np.stack((r * np.cos(a), r * np.sin(a)), axis=-1)
         tasks = [{'goal': goal} for goal in goals]

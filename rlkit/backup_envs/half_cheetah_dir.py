@@ -2,8 +2,9 @@ import numpy as np
 
 from .half_cheetah import HalfCheetahEnv
 from . import register_env
-@register_env('cheetah-dir')
 
+
+@register_env('cheetah-dir')
 class HalfCheetahDirEnv(HalfCheetahEnv):
     """Half-cheetah environment with target direction, as described in [1]. The
     code is adapted from
@@ -23,12 +24,11 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
         (https://homes.cs.washington.edu/~todorov/papers/TodorovIROS12.pdf)
     """
 
-    def __init__(self, n_tasks=2):
-        assert n_tasks == 2
+    def __init__(self, task={}, n_tasks=2, randomize_tasks=False):
         directions = [-1, 1]
         self.tasks = [{'direction': direction} for direction in directions]
-        self._task = {}
-        self._goal_dir = 1
+        self._task = task
+        self._goal_dir = task.get('direction', 1)
         self._goal = self._goal_dir
         super(HalfCheetahDirEnv, self).__init__()
 
@@ -61,12 +61,3 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
         self._goal_dir = self._task['direction']
         self._goal = self._goal_dir
         self.reset()
-
-if __name__ == '__main__':
-    env =  HalfCheetahDirEnv()
-    for idx in range(2):
-        env.reset()
-        env.reset_task(idx)
-        for _ in range(1000):
-            env.step(env.action_space.sample())
-            env.render()

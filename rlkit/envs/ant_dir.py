@@ -1,15 +1,14 @@
 import numpy as np
-
-from rlkit.envs.ant_multitask_base import MultitaskAntEnv
+from .ant_multitask_base import MultitaskAntEnv
 from . import register_env
-
 
 @register_env('ant-dir')
 class AntDirEnv(MultitaskAntEnv):
 
-    def __init__(self, task={}, n_tasks=2, forward_backward=False, randomize_tasks=True, **kwargs):
-        self.forward_backward = forward_backward
-        super(AntDirEnv, self).__init__(task, n_tasks, **kwargs)
+    def __init__(self, n_tasks=2):
+        assert n_tasks == 2
+        self.forward_backward = True
+        super(AntDirEnv, self).__init__({}, n_tasks)
 
     def step(self, action):
         torso_xyz_before = np.array(self.get_body_com("torso"))
@@ -47,3 +46,12 @@ class AntDirEnv(MultitaskAntEnv):
             velocities = np.random.uniform(0., 2.0 * np.pi, size=(num_tasks,))
         tasks = [{'goal': velocity} for velocity in velocities]
         return tasks
+
+if __name__ == '__main__':
+    env =  AntDirEnv()
+    for idx in range(2):
+        env.reset()
+        env.reset_task(idx)
+        for _ in range(1000):
+            env.step(env.action_space.sample())
+            env.render()

@@ -1,4 +1,6 @@
-from .ant import AntEnv
+from rlkit.envs.ant import AntEnv
+
+
 # from gym.envs.mujoco.ant import AntEnv
 
 class MultitaskAntEnv(AntEnv):

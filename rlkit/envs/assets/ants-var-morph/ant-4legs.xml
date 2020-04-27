@@ -25,6 +25,7 @@
         <body name="torso" pos="0 0 0.75">
             <geom name="torso_geom" pos="0 0 0" size="0.25" type="sphere"/>
             <joint armature="0" damping="0" limited="false" margin="0.01" name="root" pos="0 0 0" type="free"/>
+
             <body name="front_left_leg" pos="0 0 0">
                 <geom fromto="0.0 0.0 0.0 0.2 0.2 0.0" name="aux_1_geom" size="0.08" type="capsule"/>
                 <body name="aux_1" pos="0.2 0.2 0">
@@ -61,12 +62,12 @@
             <body name="right_back_leg" pos="0 0 0">
                 <geom fromto="0.0 0.0 0.0 0.2 -0.2 0.0" name="aux_4_geom" size="0.08" type="capsule"/>
                 <body name="aux_4" pos="0.2 -0.2 0">
-                    <joint axis="0 0 1" name="hip_4" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
-                    <geom fromto="0.0 0.0 0.0 0.2 -0.2 0.0" name="rightback_leg_geom" size="0.08" type="capsule"/>
-                    <body pos="0.2 -0.2 0">
+<!--                    <joint axis="0 0 1" name="hip_4" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>-->
+<!--                    <geom fromto="0.0 0.0 0.0 0.2 -0.2 0.0" name="rightback_leg_geom" size="0.08" type="capsule"/>-->
+<!--                    <body pos="0.2 -0.2 0">-->
                         <joint axis="1 1 0" name="ankle_4" pos="0.0 0.0 0.0" range="30 70" type="hinge"/>
                         <geom fromto="0.0 0.0 0.0 0.4 -0.4 0.0" name="fourth_ankle_geom" size="0.08" type="capsule"/>
-                    </body>
+<!--                    </body>-->
                 </body>
             </body>
         </body>
@@ -75,7 +76,7 @@
         <site name="origin" rgba="1 0 0 0.5" pos="0. 0. 0." size="0.1"/>
     </worldbody>
     <actuator>
-        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="150"/>
+<!--        <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="150"/>-->
         <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="150"/>
         <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="150"/>
         <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="150"/>

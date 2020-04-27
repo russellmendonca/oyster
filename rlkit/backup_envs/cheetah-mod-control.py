@@ -1,5 +1,7 @@
-import numpy as np
 from itertools import combinations
+
+import numpy as np
+
 from . import register_env
 from .half_cheetah import HalfCheetahEnv
 
@@ -35,12 +37,14 @@ class HalfCheetahModControlEnv(HalfCheetahEnv):
             self.tasks = gen_neg_tasks()
             self.mask = self.tasks[0].get('mask')
 
+
         assert n_tasks == len(self.tasks)
         assert randomize_tasks == False
 
         super(HalfCheetahModControlEnv, self).__init__()
 
     def step(self, action):
+
         if self.task_type == 'swp':
             action = action[self._joint_permutation]
         elif self.task_type == 'mask':
@@ -103,6 +107,7 @@ def gen_swp_tasks():
 def gen_neg_tasks():
     # 10 train tasks, followed by 10 test tasks
     all_tasks = []
+
     all_train_neg_idxs = list(combinations(np.arange(5), 3))
 
     for i, neg_idxs in enumerate(all_train_neg_idxs):
