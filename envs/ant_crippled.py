@@ -136,4 +136,6 @@ if __name__ == '__main__':
         env.reset_task(idx)
         for _ in range(100):
             env.step(env.action_space.sample())
+            #obs = env.get_obs()
+
             env.render()

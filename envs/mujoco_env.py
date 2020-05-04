@@ -4,7 +4,7 @@ from os import path
 import mujoco_py
 import numpy as np
 from gym.envs.mujoco import mujoco_env
-from serializable import Serializable
+from .serializable import Serializable
 
 ENV_ASSET_DIR = os.path.join(os.path.dirname(__file__), 'assets')
 class MujocoEnv(mujoco_env.MujocoEnv, Serializable):

@@ -1,8 +1,8 @@
 import os
 import numpy as np
 import torch
-from rlkit.envs import ENVS
-from rlkit.envs.wrappers import NormalizedBoxEnv
+from envs import ENVS
+from envs.wrappers import NormalizedBoxEnv
 from rlkit.torch.sac.policies import TanhGaussianPolicy
 from rlkit.torch.networks import FlattenMlp, MlpEncoder, RecurrentEncoder
 from rlkit.torch.sac.sac import PEARLSoftActorCritic
@@ -11,6 +11,8 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.launchers.launcher_util import setup_logger
 
 def setup_and_run(variant):
+    
+    ptu.set_gpu_mode(variant['util_params']['use_gpu'], variant['seed']%variant['util_params']['num_gpus']) 
     #setup env
     env_name = variant['env_name']
     env_params = variant['env_params']
@@ -73,8 +75,8 @@ def setup_and_run(variant):
     algorithm = PEARLSoftActorCritic(
         env=env,
         train_tasks=list(np.arange(variant['n_train_tasks'])),
-        eval_tasks=list(np.arange([variant['n_train_tasks'],
-                                   variant['n_train_tasks'] + variant['n_val_tasks']])),
+        eval_tasks=list(np.arange(variant['n_train_tasks'],
+                                   variant['n_train_tasks'] + variant['n_eval_tasks'])),
         nets=[agent, qf1, qf2, target_qf1, target_qf2],
         latent_dim=latent_dim,
         **variant['algo_params']
@@ -91,17 +93,20 @@ def setup_and_run(variant):
 
         # TODO hacky, revisit after model refactor
         policy.load_state_dict(torch.load(os.path.join(path, 'policy.pth')))
-
+        
     if ptu.gpu_enabled():
         algorithm.to()
 
+    os.environ['DEBUG'] = str(int(variant['util_params']['debug']))
+
     #setup logger
-    run_mode = variant['algo_params']['run_mode']
+    run_mode = variant['run_mode']
     exp_log_name = os.path.join(variant['env_name'], run_mode,
-                                variant['log_annotation'], 'seed-' + str(variant['seed']))
+                                variant['log_annotation']+ variant['variant_name'], 
+                                'seed-' + str(variant['seed']))
 
     setup_logger(exp_log_name, variant=variant, exp_id=None,
-                 base_log_dir=variant['util_params']['base_log_dir'], snapshot_mode='gap',
+                 base_log_dir=os.environ.get('PEARL_DATA_PATH'), snapshot_mode='gap',
                  snapshot_gap=10)
 
     # run the algorithm

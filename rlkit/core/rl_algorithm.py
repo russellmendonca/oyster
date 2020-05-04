@@ -20,7 +20,6 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             agent,
             train_tasks,
             eval_tasks,
-            exp_mode='TRAIN',
             meta_batch=64,
             num_iterations=100,
             num_train_steps_per_itr=1000,
@@ -65,7 +64,6 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         self.exploration_agent = agent  # Can potentially use a different policy purely for exploration rather than also solving tasks, currently not being used
         self.train_tasks = train_tasks
         self.eval_tasks = eval_tasks
-        self.exp_mode = exp_mode
         self.meta_batch = meta_batch
         self.num_iterations = num_iterations
         self.num_train_steps_per_itr = num_train_steps_per_itr

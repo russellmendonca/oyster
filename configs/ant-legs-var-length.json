@@ -1,14 +1,14 @@
 {
-  "env_name": "ant-crippled",
-  "n_train_tasks": 3,
-  "n_eval_tasks": 1,
+  "env_name": "ant-legs-var-length",
+  "n_train_tasks": 81,
+  "n_eval_tasks": 0,
   "algo_params": {
     "meta_batch": 10,
     "num_initial_steps": 2000,
     "num_steps_prior": 400,
     "num_steps_posterior": 0,
     "num_extra_rl_steps_posterior": 600,
-    "num_train_steps_per_itr": 2000,
+    "num_train_steps_per_itr": 1000,
     "num_evals": 1,
     "num_steps_per_eval": 600,
     "num_exp_traj_eval": 2,

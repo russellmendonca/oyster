@@ -49,8 +49,10 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
 
     def sample_tasks(self, num_tasks):
         np.random.seed(1337)
-        max_vel = 1.0 if self.restricted_train_set else 3.0
-        velocities = np.random.uniform(0.0, max_vel, size=(num_tasks,))
+        if self.restricted_train_set:
+            velocities = np.random.uniform(1.5, 2.5, size=(num_tasks,))
+        else:
+            velocities = np.random.uniform(0.0, 3.0, size=(num_tasks,))
         tasks = [{'velocity': velocity} for velocity in velocities]
         return tasks
 

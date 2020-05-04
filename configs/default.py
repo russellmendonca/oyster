@@ -2,14 +2,16 @@
 # all experiments should modify these settings only as needed
 default_pearl_config = dict(
     env_name='cheetah-dir',
+    run_mode='TRAIN',
     n_train_tasks=2,
     n_eval_tasks=2,
     latent_size=5,  # dimension of the latent context vector
     net_size=300,  # number of units per FC layer in each network
     path_to_weights=None,  # path to pre-trained weights to load into networks
+    log_annotation='default',
+    seed=0,
     env_params=dict(),
     algo_params=dict(
-        exp_mode='TRAIN',  # other mode is eval
         meta_batch=16,  # number of tasks to average the gradient across
         num_iterations=1000,  # number of data sampling / training iterates
         num_initial_steps=2000,  # number of transitions collected per task before training
@@ -45,10 +47,9 @@ default_pearl_config = dict(
         dump_eval_paths=False,  # whether to save evaluation trajectories
     ),
     util_params=dict(
-        base_log_dir='/nfs/kun1/users/russell/pearl_data',
         use_gpu=True,
-        gpu_id=0,
+        num_gpus=4,
         debug=False,  # debugging triggers printing and writes logs to debug directory
-        docker=False,  # TODO docker is not yet supported
+        #docker=False,  # TODO docker is not yet supported
     )
 )
